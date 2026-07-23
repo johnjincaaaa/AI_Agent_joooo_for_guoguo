@@ -1,0 +1,383 @@
+/* ==============================================
+   输入区：嵌套输入框 + 工具栏  · 精致深色版
+============================================== */
+
+/* 屏幕阅读器专用 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 输入区外层：居中、留白 */
+.input-area {
+    width: 100%;
+    max-width: 808px;
+    margin: 0 auto;
+    padding: 8px 24px 16px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.input-box-wrapper {
+    width: 100%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 10px 12px 8px;
+    box-shadow: var(--shadow-soft);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+.input-box-wrapper:focus-within {
+    border-color: rgba(76, 141, 255, 0.5);
+}
+
+/* 输入框容器 */
+.input-inner {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+}
+
+/* 附件预览条 */
+.attachment-preview-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 4px 8px;
+}
+
+.attachment-preview-item {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-hover);
+}
+
+.attachment-preview-item.attachment-image {
+    width: 72px;
+    height: 72px;
+}
+
+.attachment-preview-item.attachment-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.attachment-preview-item.attachment-document {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    max-width: 220px;
+    padding: 10px 32px 10px 12px;
+}
+
+.attachment-doc-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.attachment-doc-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachment-preview-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attachment-preview-remove:hover {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+/* 输入框本体 */
+#userInput {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 12px;
+    padding: 8px 50px 8px 8px;
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    box-sizing: border-box;
+
+    resize: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-word;
+
+    min-height: 44px;
+    max-height: 300px;
+}
+
+#userInput::-webkit-scrollbar { display: none; }
+#userInput::placeholder { color: var(--text-muted); }
+
+/* 发送按钮：内嵌右下角 */
+.button-send {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+}
+.button-send:hover {
+    background: var(--accent-hover);
+    transform: scale(1.06);
+}
+.button-send:active { transform: scale(0.96); }
+
+/* 底部工具栏 */
+.input-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 4px 0;
+}
+
+/* 左侧：智能联网按钮 */
+.left-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.left-tools .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.left-tools .tool-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-color: var(--border-strong);
+}
+.left-tools .tool-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(76, 141, 255, 0.4);
+}
+
+/* 技能下拉菜单 */
+.skills-wrap {
+    position: relative;
+}
+
+.skills-dropdown {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 220px;
+    max-width: 280px;
+    max-height: 280px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    z-index: 100;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.skills-dropdown.open {
+    display: flex;
+}
+
+.skills-dropdown-title {
+    padding: 10px 14px 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.skills-list {
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.skills-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.skills-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.skills-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.skills-item:hover {
+    background: var(--bg-hover);
+}
+
+.skills-item.selected {
+    background: var(--accent-soft);
+}
+
+.skills-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+}
+
+.skills-item.selected .skills-item-icon {
+    color: var(--accent);
+}
+
+.skills-item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.skills-item-name {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.skills-item-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.skills-item-check {
+    flex-shrink: 0;
+    font-size: 14px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.skills-item.selected .skills-item-check {
+    opacity: 1;
+}
+
+.skills-empty {
+    padding: 16px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* 右侧：联网状态标识 */
+.right-status .net-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.net-status .net-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #555b66;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.net-status.online {
+    color: #4caf86;
+}
+.net-status.online .net-dot {
+    background: #4caf86;
+    box-shadow: 0 0 8px #4caf86;
+}
+
+/* 输入区底部提示 */
+.input-tip {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+}
+
+/* 免费体验剩余次数提示 */
+.quota-tip {
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 8px;
+}
+.quota-tip[hidden] {
+    display: none !important;
+}
+.quota-tip.quota-tip-warn {
+    color: #ffab4a;
+}
+
+@media (max-width: 768px) {
+    .input-area { padding: 8px 12px 12px; }
+}

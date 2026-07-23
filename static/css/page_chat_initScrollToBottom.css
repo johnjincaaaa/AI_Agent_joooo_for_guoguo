@@ -1,0 +1,44 @@
+/* ----------------------- 一键滑到底部按钮 ----------------------- */
+.chat-whole {
+    position: relative; /* 让按钮相对聊天区定位 */
+}
+
+.scroll-bottom-btn {
+    position: absolute;
+    left: 50%;
+    bottom: 150px;              /* 浮在输入框上方，可按需微调 */
+    transform: translateX(-50%) translateY(8px);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.18s ease;
+    z-index: 40;
+}
+
+.scroll-bottom-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent);
+}
+
+/* 需要显示时加 .show */
+.scroll-bottom-btn.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 768px) {
+    .scroll-bottom-btn { bottom: 130px; }
+}

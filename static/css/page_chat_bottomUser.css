@@ -1,0 +1,115 @@
+/* ==========================================================
+   侧边栏底部用户头像组件 · 精致深色版
+========================================================== */
+.user-profile {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 264px;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+/* 头像 */
+.user-profile .avatar img {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+}
+
+/* 用户信息 */
+.user-profile .user-info {
+    flex: 1;
+    overflow: hidden;
+}
+.user-profile .user-info span {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+/* 更多按钮 */
+.profile-menu-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-menu-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* 下拉菜单 */
+.profile-dropdown {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    min-width: 168px;
+    box-shadow: var(--shadow-soft);
+    display: none;
+}
+.profile-dropdown.show {
+    display: block;
+    animation: dropIn 0.18s ease;
+}
+@keyframes dropIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 菜单项 */
+.dropdown-item {
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.18s ease;
+}
+.dropdown-item:hover {
+    background: var(--bg-hover);
+}
+
+.logout-btn {
+    color: #ff6b6b;
+}
+.logout-btn:hover {
+    background: rgba(255, 107, 107, 0.12);
+}
+
+/* 显隐控制 */
+.user-profile.hidden {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .user-profile { width: 220px; }
+}

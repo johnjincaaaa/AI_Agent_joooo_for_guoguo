@@ -1,0 +1,84 @@
+/* ==========================================================
+   右侧悬浮图标 · 在线客服 + 下载 App
+   链接在 static/js/config.js 中自定义，留空则对应图标隐藏
+========================================================== */
+.float-dock {
+    position: fixed;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9997;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.float-dock-item {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: #fff;
+    background: var(--accent);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(76, 141, 255, 0.35);
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.float-dock-item:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 26px rgba(76, 141, 255, 0.5);
+}
+
+/* 下载 App 用中性深色，和客服做区分 */
+.float-dock-item#floatAppBtn {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.float-dock-item#floatAppBtn:hover {
+    background: var(--bg-hover);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+}
+
+.float-dock-item[hidden] {
+    display: none !important;
+}
+
+.float-dock-label {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: 0.2px;
+}
+
+/* ----------------------- 移动端适配 ----------------------- */
+@media (max-width: 768px) {
+    .float-dock {
+        right: 12px;
+        bottom: 96px;   /* 让开底部输入区，避免遮挡发送按钮 */
+        top: auto;
+        transform: none;
+        gap: 10px;
+    }
+    .float-dock-item {
+        width: 50px;
+        height: 50px;
+        border-radius: 14px;
+    }
+    .float-dock-item svg {
+        width: 20px;
+        height: 20px;
+    }
+    .float-dock-label {
+        font-size: 10px;
+    }
+}

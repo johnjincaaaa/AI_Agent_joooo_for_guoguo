@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>有料ai</title>
+    <link rel="stylesheet" href="../static/css/page_chat.css">
+    <link rel="stylesheet" href="../static/css/page_chat_bottomUser.css">
+    <link rel="stylesheet" href="../static/css/page_chat_loginRegister.css">
+    <link rel="stylesheet" href="../static/css/page_chat_inputBox.css">
+    <link rel="stylesheet" href="../static/css/page_chat_initScrollToBottom.css">
+    <link rel="stylesheet" href="../static/css/page_job_hunt.css">
+    <link rel="stylesheet" href="../static/css/page_chat_apiGuide.css">
+    <link rel="stylesheet" href="../static/css/page_chat_floatDock.css">
+    <link rel="icon" href="../static/a.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+</head>
+<body>
+
+<!-- 1. 右上角按钮组：接入教程 + 登录 -->
+<button class="guide-btn" id="openGuideBtn" data-i18n="guide_btn" title="如何接入 AI 大模型 API">接入教程</button>
+<button class="login-btn" id="openLoginBtn" data-i18n="login">登录</button>
+
+<!-- 右侧悬浮图标：在线客服 + 下载 App（链接在 static/js/config.js 中自定义） -->
+<div class="float-dock" id="floatDock">
+    <a class="float-dock-item" id="floatServiceBtn" href="#" target="_blank" rel="noopener"
+       data-i18n-title="float_service" title="在线客服" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+            <path d="M21 19a2 2 0 0 1-2 2h-3v-8h3a2 2 0 0 1 2 2z"></path>
+            <path d="M3 15a2 2 0 0 1 2-2h3v8H5a2 2 0 0 1-2-2z"></path>
+        </svg>
+        <span class="float-dock-label" data-i18n="float_service">在线客服</span>
+    </a>
+    <a class="float-dock-item" id="floatAppBtn" href="#" target="_blank" rel="noopener"
+       data-i18n-title="float_app" title="下载 App" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12" y2="18"></line>
+        </svg>
+        <span class="float-dock-label" data-i18n="float_app">下载App</span>
+    </a>
+</div>
+
+<!-- API 接入教程弹窗 -->
+<div class="guide-modal" id="guideModal">
+    <div class="guide-overlay" id="guideOverlay"></div>
+    <div class="guide-content">
+        <button class="close-btn" id="closeGuideBtn" aria-label="关闭">×</button>
+        <div class="guide-header">
+            <div class="guide-title">接入 AI 大模型（3 分钟搞定）</div>
+            <div class="guide-subtitle">
+                本系统兼容所有 OpenAI 格式的大模型接口。选择一家服务商，注册获取 API Key，
+                填入项目根目录的 <code>.env</code> 文件，保存后重启即可对话。
+            </div>
+        </div>
+
+        <div class="guide-tabs">
+            <span class="guide-tab active" data-guide="deepseek">DeepSeek（推荐）</span>
+            <span class="guide-tab" data-guide="aliyun">阿里云百炼（通义）</span>
+            <span class="guide-tab" data-guide="ollama">本地 Ollama（免费）</span>
+        </div>
+
+        <!-- DeepSeek -->
+        <div class="guide-pane show" data-guide-pane="deepseek">
+            <ol class="guide-steps">
+                <li>打开 <a href="https://platform.deepseek.com/" target="_blank" rel="noopener">platform.deepseek.com</a>，注册并登录。</li>
+                <li>进入「API Keys」页面，点击「创建 API Key」，复制得到的密钥（形如 <code>sk-xxxxxx</code>）。</li>
+                <li>在「充值」页面充值少量金额（DeepSeek 按用量计费，很便宜）。</li>
+                <li>打开项目根目录的 <code>.env</code> 文件，填入以下三项：</li>
+            </ol>
+            <pre class="guide-code">LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+LLM_API_KEY=sk-把你的密钥粘贴到这里</pre>
+        </div>
+
+        <!-- 阿里云百炼 -->
+        <div class="guide-pane" data-guide-pane="aliyun">
+            <ol class="guide-steps">
+                <li>打开 <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener">阿里云百炼控制台</a>，用阿里云账号登录。</li>
+                <li>在「API-KEY」页面创建密钥并复制（形如 <code>sk-xxxxxx</code>）。</li>
+                <li>开通「通义千问」模型服务（新用户通常有免费额度）。</li>
+                <li>打开项目根目录的 <code>.env</code> 文件，填入以下三项：</li>
+            </ol>
+            <pre class="guide-code">LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM_MODEL=qwen-plus
+LLM_API_KEY=sk-把你的密钥粘贴到这里</pre>
+            <p class="guide-note">提示：图片解析技能使用通义千问多模态模型，建议模型填 <code>qwen-vl-plus</code> 或另配阿里云 Key。</p>
+        </div>
+
+        <!-- 本地 Ollama -->
+        <div class="guide-pane" data-guide-pane="ollama">
+            <ol class="guide-steps">
+                <li>打开 <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a> 下载并安装 Ollama。</li>
+                <li>打开命令行运行 <code>ollama pull qwen2.5</code> 下载模型（完全免费、本地运行、数据不外传）。</li>
+                <li>确保 Ollama 正在运行（默认端口 11434）。</li>
+                <li>打开项目根目录的 <code>.env</code> 文件，填入以下三项：</li>
+            </ol>
+            <pre class="guide-code">LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen2.5
+LLM_API_KEY=ollama</pre>
+            <p class="guide-note">本地模型无需付费，但速度取决于你的电脑配置。</p>
+        </div>
+
+        <div class="guide-footer">
+            填写完成后，<b>保存 .env 文件</b>并重新运行 <code>start.bat</code>（或重启服务），即可开始对话。
+        </div>
+    </div>
+</div>
+
+<!-- 2. 登录弹窗（登录 + 注册） -->
+<div class="login-modal" id="loginModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <button class="close-btn" id="closeLoginBtn">×</button>
+
+        <!-- 品牌区 -->
+        <div class="modal-brand">
+            <div class="modal-logo">
+                <img src="../static/a.png" alt="有料ai">
+            </div>
+            <div class="modal-title" data-i18n="modal_welcome">欢迎使用 有料ai</div>
+            <div class="modal-subtitle" data-i18n="modal_subtitle">登录后即可保存你的对话历史</div>
+        </div>
+
+        <!-- 选项卡：登录 / 注册 -->
+        <div class="tab-box">
+            <span class="tab active" data-tab="login" data-i18n="tab_login">登录</span>
+            <span class="tab" data-tab="register" data-i18n="tab_register">注册</span>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="form-box show" id="loginForm">
+            <div class="input-item">
+                <label for="login_username" data-i18n="label_username">用户名</label>
+                <input type="text" id="login_username" data-i18n-ph="ph_login_username" placeholder="请输入用户名">
+            </div>
+            <div class="input-item">
+                <label for="login_pwd" data-i18n="label_password">密码</label>
+                <div class="password-field">
+                    <input type="password" id="login_pwd" data-i18n-ph="ph_login_pwd" placeholder="请输入密码">
+                    <button type="button" class="pwd-toggle-btn" data-target="login_pwd" aria-label="显示密码" title="显示密码">
+                        <svg class="icon-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="icon-eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <button class="submit-btn" id="doLogin" data-i18n="btn_do_login">立即登录</button>
+        </div>
+
+        <!-- 注册表单 -->
+        <div class="form-box" id="registerForm">
+            <div class="input-item">
+                <label for="reg_username" data-i18n="label_username">用户名</label>
+                <input type="text" id="reg_username" data-i18n-ph="ph_reg_username" placeholder="请设置用户名">
+            </div>
+            <div class="input-item">
+                <label for="reg_pwd" data-i18n="label_password">密码</label>
+                <div class="password-field">
+                    <input type="password" id="reg_pwd" data-i18n-ph="ph_reg_pwd" placeholder="请设置密码">
+                    <button type="button" class="pwd-toggle-btn" data-target="reg_pwd" aria-label="显示密码" title="显示密码">
+                        <svg class="icon-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="icon-eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="input-item">
+                <label for="reg_repwd" data-i18n="label_repassword">确认密码</label>
+                <div class="password-field">
+                    <input type="password" id="reg_repwd" data-i18n-ph="ph_reg_repwd" placeholder="请再次输入密码">
+                    <button type="button" class="pwd-toggle-btn" data-target="reg_repwd" aria-label="显示密码" title="显示密码">
+                        <svg class="icon-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="icon-eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <button class="submit-btn" id="doRegister" data-i18n="btn_do_register">立即注册</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 移动端侧边栏抽屉遮罩 -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app-shell">
+    <div class="sidebar-wrap">
+        <div class="sidebar" id="sideBar">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <span class="brand-name" data-i18n="brand_name">有料ai</span>
+            </div>
+            <div class="sidebar-section-label" data-i18n="sidebar_jobhunt_section">找工作</div>
+            <div class="sidebar-nav-item" id="jobHuntEntry" title="简历制作与岗位推荐">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                <span data-i18n="jobhunt_entry">简历制作 · 岗位推荐</span>
+            </div>
+            <div class="history" data-i18n="history_label">历史会话</div>
+            <!--
+            <div title="1779986166533" class="history title">我是历史记录下的标签</div>
+            -->
+        </div>
+        <!-- 用户头像组件（固定在侧边栏底部） -->
+        <div class="user-profile" id="userProfile">
+            <div class="avatar">
+                <img id="avatarImg" src="../static/a.png" alt="头像">
+            </div>
+            <div class="user-info">
+                <span id="userName">未登录</span>
+            </div>
+            <button class="profile-menu-btn" id="profileMenuBtn" aria-label="更多操作">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="19" cy="12" r="1"></circle>
+                    <circle cx="5" cy="12" r="1"></circle>
+                </svg>
+            </button>
+
+            <!-- 点击弹出的下拉菜单 -->
+            <div class="profile-dropdown" id="profileDropdown">
+                <div class="dropdown-item logout-btn" id="logoutBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span data-i18n="logout">退出登录</span>
+                </div>
+            </div>
+        </div>
+    </div><!-- 左边 -->
+
+
+    <div class="chat-whole">
+        <div class="chat-box-title" id="chatBoxTitle">
+            <div class="title-tools">
+                <button class="fold-btn" onclick="foldHistorySession()" data-i18n-title="fold_title" title="折叠/展开侧边栏"
+                        aria-label="折叠/展开侧边栏">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+                <button class="new-btn" onclick="createNewSession()" data-i18n-title="new_chat_title" title="新建对话" aria-label="新建对话">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+
+                <button class="lang-toggle-btn" id="langToggleBtn" data-i18n-title="lang_toggle_title" title="切换中/英文">EN</button>
+            </div>
+            <div class="chat-session" id="chatSession" data-i18n="new_session">新对话</div>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-logo">
+                    <img src="../static/a.png" alt="有料ai">
+                </div>
+                <div class="empty-title" data-i18n="empty_title">我是有料ai，有什么可以帮你？</div>
+                <div class="empty-desc" data-i18n="empty_desc">输入你的问题，开启一段新的对话</div>
+            </div>
+            <!--        <div class="message user"></div>-->
+            <!--        <div class="message ai"></div>-->
+        </div>
+
+        <div class="job-hunt-panel hidden" id="jobHuntPanel">
+            <div class="job-panel-header">
+                <h2 data-i18n="job_panel_title">找工作</h2>
+                <p data-i18n="job_panel_desc">完善个人画像 → 选择简历模板 → AI 生成简历 → 匹配 BOSS 直聘对口岗位（当前为虚拟数据）</p>
+            </div>
+
+            <div class="job-steps">
+                <span class="job-step-tag active" data-i18n="job_step_1">① 个人画像</span>
+                <span class="job-step-tag" data-i18n="job_step_2">② 简历模板</span>
+                <span class="job-step-tag" data-i18n="job_step_3">③ AI 简历</span>
+                <span class="job-step-tag" data-i18n="job_step_4">④ 岗位推荐</span>
+            </div>
+
+            <section class="job-section">
+                <div class="job-section-title"><span class="num">1</span><span data-i18n="job_section_1">个人画像</span></div>
+                <div class="job-form-grid" id="jobProfileForm"></div>
+                <div class="job-actions">
+                    <button type="button" class="job-btn job-btn-secondary" id="jobSaveProfileBtn" data-i18n="job_save_profile">保存画像</button>
+                </div>
+                <div class="job-status-tip" id="jobSaveStatus"></div>
+            </section>
+
+            <section class="job-section">
+                <div class="job-section-title"><span class="num">2</span><span data-i18n="job_section_2">挑选简历模板</span></div>
+                <div class="template-grid" id="jobTemplateGrid"></div>
+            </section>
+
+            <section class="job-section">
+                <div class="job-section-title"><span class="num">3</span><span data-i18n="job_section_3">AI 完善简历</span></div>
+                <div class="resume-preview empty" id="jobResumePreview" data-i18n="job_resume_empty">点击「AI 完善简历」生成专业简历</div>
+                <div class="job-actions">
+                    <button type="button" class="job-btn job-btn-primary" id="jobGenerateBtn" data-i18n="job_generate_btn">AI 完善简历</button>
+                </div>
+                <div class="job-status-tip" id="jobResumeStatus"></div>
+            </section>
+
+            <section class="job-section">
+                <div class="job-section-title"><span class="num">4</span><span data-i18n="job_section_4">对口岗位推荐</span></div>
+                <div class="job-list" id="jobRecommendList">
+                    <p class="job-status-tip" data-i18n="job_match_default">完成画像与简历后，点击匹配推荐岗位</p>
+                </div>
+                <div class="job-actions">
+                    <button type="button" class="job-btn job-btn-primary" id="jobMatchBtn" data-i18n="job_match_btn">匹配推荐岗位</button>
+                </div>
+                <div class="job-status-tip" id="jobMatchStatus"></div>
+            </section>
+        </div>
+
+        <!-- 一键滑到底部按钮 -->
+        <button class="scroll-bottom-btn" id="scrollBottomBtn" aria-label="滚动到底部" title="回到底部">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+        </button>
+
+        <div class="input-area">
+            <div class="input-box-wrapper">
+                <div class="attachment-preview-bar" id="attachmentPreviewBar" hidden></div>
+                <!-- 嵌套输入框 + 按钮 -->
+                <div class="input-inner">
+                    <label for="userInput" class="sr-only">输入你的问题</label>
+                    <textarea id="userInput" data-i18n-ph="input_placeholder" placeholder="输入问题，可粘贴图片/文档或点击附件上传..." autocomplete="off"></textarea>
+                    <button onclick="sendMessage()" id="sendMessage" class="button-send" data-i18n-title="send_title" aria-label="发送">➤</button>
+                </div>
+
+                <!-- 底部工具栏：智能搜索 + 技能 + 联网标识 -->
+                <div class="input-toolbar">
+                    <div class="left-tools">
+                        <button class="tool-btn attach-btn" id="attachBtn" type="button" data-i18n-title="attach_title" title="上传图片或文档">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                            <span data-i18n="attach_btn">附件</span>
+                        </button>
+                        <input type="file" id="fileInput" hidden multiple
+                               accept=".pdf,.doc,.docx,.txt,image/jpeg,image/png,image/gif,image/webp,image/bmp">
+                        <div class="skills-wrap" id="skillsWrap">
+                            <button class="tool-btn skills-btn" id="skillsBtn" type="button" data-i18n-tip="skills_tip" data-tip="选择 AI 技能工具链">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                                </svg>
+                                <span class="skills-btn-label" data-i18n="skills_btn">技能</span>
+                            </button>
+                            <div class="skills-dropdown" id="skillsDropdown">
+                                <div class="skills-dropdown-title" data-i18n="skills_dropdown_title">选择技能</div>
+                                <div class="skills-list" id="skillsList"></div>
+                            </div>
+                        </div>
+                        <button class="tool-btn tooltip" id="searchBtn" data-i18n-tip="online_tip" data-tip="按需搜索网页">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span data-i18n="online_btn">智能联网</span>
+                        </button>
+                    </div>
+                    <div class="right-status">
+                        <div class="net-status" id="netStatus" data-i18n-title="net_status_title" title="智能体是否基于网络回答">
+                            <span class="net-dot"></span>
+                            <span class="net-text" data-i18n="net_off">未联网</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="quota-tip" id="quotaTip" hidden></div>
+            <div class="input-tip" data-i18n="input_tip">内容由 AI 生成，请注意甄别</div>
+        </div>
+
+
+    </div> <!-- 右边 -->
+</div>
+
+
+<script src="../static/js/config.js"></script>
+<script src="../static/js/i18n.js"></script>
+<script src="../static/js/showLoginExpiredModal.js"></script>
+<script src="../static/js/page_chat.js"></script>
+<script src="../static/js/LoginRegister.js"></script>
+<script src="../static/js/inputTool.js"></script>
+<script src="../static/js/skillsTool.js"></script>
+<script src="../static/js/fileAttachment.js"></script>
+<script src="../static/js/jobHunt.js"></script>
+<script src="../static/js/apiGuide.js"></script>
+<script src="../static/js/floatDock.js"></script>
+<script src="../static/js/page_chat_initScrollToBottom.js"></script>
+
+</body>
+</html>

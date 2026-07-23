@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+sqlalchemy
+# pymysql  # 仅在使用 MySQL 时需要，默认 SQLite 无需安装
+python-jose[cryptography]
+bcrypt
+python-dotenv
+pydantic
+langchain
+langchain-openai
+dashscope
+requests
+beautifulsoup4
+pillow
+pypdf
+python-docx

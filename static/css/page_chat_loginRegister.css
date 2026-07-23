@@ -1,0 +1,265 @@
+/* ==========================================================
+   登录注册弹窗 · 深色磨砂高级版
+========================================================== */
+.login-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    animation: modalFadeIn 0.3s ease forwards;
+}
+
+/* 遮罩：深色 + 强毛玻璃 */
+.modal-overlay {
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 9, 13, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+/* 弹窗主体 */
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(27, 30, 37, 0.92);
+    padding: 32px 30px 30px;
+    border-radius: 22px;
+    width: 372px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: modalSlideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* 品牌区 */
+.modal-brand {
+    margin-bottom: 24px;
+}
+.modal-logo img {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(76, 141, 255, 0.35);
+}
+.modal-title {
+    margin-top: 14px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #f0f1f5;
+}
+.modal-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #8a909c;
+}
+
+/* 关闭按钮 */
+.close-btn {
+    position: absolute;
+    right: 18px;
+    top: 16px;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #8a909c;
+    transition: all 0.25s ease;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.close-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 登录/注册选项卡 */
+.tab-box {
+    display: flex;
+    justify-content: center;
+    gap: 44px;
+    margin-bottom: 26px;
+}
+.tab {
+    font-size: 15px;
+    cursor: pointer;
+    padding: 6px 0;
+    color: #8a909c;
+    transition: all 0.25s ease;
+    position: relative;
+    user-select: none;
+}
+.tab.active {
+    color: #4c8dff;
+    font-weight: 600;
+}
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 3px;
+    background: #4c8dff;
+    border-radius: 3px;
+}
+
+/* 表单容器 */
+.form-box {
+    display: none;
+}
+.form-box.show {
+    display: block;
+    animation: formFadeIn 0.35s ease forwards;
+}
+
+/* 输入项 */
+.input-item {
+    margin-bottom: 18px;
+    text-align: left;
+}
+.input-item label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #b6bcc8;
+    font-weight: 400;
+}
+.input-item input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    font-size: 15px;
+    color: #f0f1f5;
+    background: rgba(13, 15, 19, 0.7);
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+.input-item input::placeholder {
+    color: #6b7280;
+}
+.input-item input:focus {
+    border-color: #4c8dff;
+    box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
+    outline: none;
+    background: rgba(13, 15, 19, 0.9);
+}
+
+/* 密码输入框 + 可视切换 */
+.password-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(13, 15, 19, 0.7);
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+.password-field:focus-within {
+    border-color: #4c8dff;
+    box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
+    background: rgba(13, 15, 19, 0.9);
+}
+.password-field input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    text-align: left;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    padding: 13px 44px 13px 16px;
+    box-shadow: none;
+}
+.password-field input:focus {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+.pwd-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #8a909c;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+.pwd-toggle-btn:hover {
+    color: #f0f1f5;
+    background: rgba(255, 255, 255, 0.08);
+}
+.pwd-toggle-btn .icon-eye-closed {
+    display: none;
+}
+.pwd-toggle-btn.visible .icon-eye-open {
+    display: none;
+}
+.pwd-toggle-btn.visible .icon-eye-closed {
+    display: block;
+}
+
+/* 提交按钮 */
+.submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #3b7bf0, #4c8dff);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+}
+.submit-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(76, 141, 255, 0.3);
+}
+.submit-btn:active {
+    transform: translateY(0);
+    filter: brightness(1);
+}
+
+/* 动画 */
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translate(-50%, -42%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes formFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .modal-content { width: calc(100% - 40px); }
+}
