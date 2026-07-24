@@ -2,8 +2,11 @@ from typing import Optional
 
 from fastapi import HTTPException, status, Depends
 from jose import JWTError, jwt
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+
+# datetime.UTC 是 Python 3.11+ 才有的别名；用 timezone.utc 兼容 3.10 及以下
+UTC = timezone.utc
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")

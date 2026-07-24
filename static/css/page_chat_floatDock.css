@@ -53,16 +53,16 @@
     box-shadow: 0 8px 26px rgba(240, 140, 42, 0.55);
 }
 
-/* 下载 App 用中性深色，和分享/客服做区分 */
+/* 下载 App 用绿色渐变，和分享/客服做区分 */
 .float-dock-item#floatAppBtn {
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-    border-color: var(--border-strong);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, #2fae6a, #1f9d5b);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 6px 20px rgba(47, 174, 106, 0.4);
 }
 .float-dock-item#floatAppBtn:hover {
-    background: var(--bg-hover);
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+    filter: brightness(1.06);
+    box-shadow: 0 8px 26px rgba(47, 174, 106, 0.55);
 }
 
 .float-dock-item[hidden] {

@@ -30,11 +30,21 @@
 <body>
 
 <!-- 1. 右上角按钮组：接入教程 + 登录 -->
-<button class="guide-btn" id="openGuideBtn" data-i18n="guide_btn" title="如何接入 AI 大模型 API">接入教程</button>
+<!-- 「接入教程」按钮已隐藏；如需重新显示，删除下面这行的 hidden 即可 -->
+<button class="guide-btn" id="openGuideBtn" data-i18n="guide_btn" title="如何接入 AI 大模型 API" hidden>接入教程</button>
 <button class="login-btn" id="openLoginBtn" data-i18n="login">登录</button>
 
-<!-- 右侧悬浮图标：分享APP → 下载APP → 在线客服（从上到下） -->
+<!-- 右侧悬浮图标：下载APP → 分享APP → 在线客服（从上到下） -->
 <div class="float-dock" id="floatDock">
+    <a class="float-dock-item" id="floatAppBtn" href="#" target="_blank" rel="noopener"
+       data-i18n-title="float_app" title="下载 App" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12" y2="18"></line>
+        </svg>
+        <span class="float-dock-label" data-i18n="float_app">下载App</span>
+    </a>
     <!-- 分享APP：点击弹出分享弹窗（不跳转） -->
     <button class="float-dock-item" id="floatShareBtn" type="button"
             data-i18n-title="float_share" title="分享APP">
@@ -48,15 +58,6 @@
         </svg>
         <span class="float-dock-label" data-i18n="float_share">分享APP</span>
     </button>
-    <a class="float-dock-item" id="floatAppBtn" href="#" target="_blank" rel="noopener"
-       data-i18n-title="float_app" title="下载 App" hidden>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <line x1="12" y1="18" x2="12" y2="18"></line>
-        </svg>
-        <span class="float-dock-label" data-i18n="float_app">下载App</span>
-    </a>
     <a class="float-dock-item" id="floatServiceBtn" href="#" target="_blank" rel="noopener"
        data-i18n-title="float_service" title="在线客服" hidden>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
