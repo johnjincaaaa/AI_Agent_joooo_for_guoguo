@@ -184,6 +184,7 @@ async function initHistory() {
             sideBar.appendChild(div);
             div.addEventListener('click', async function () {
                 if (typeof exitJobHuntMode === 'function') exitJobHuntMode();
+                if (typeof exitWalletMode === 'function') exitWalletMode();
                 document.getElementById("chatBox").querySelectorAll(".message").forEach(el => el.remove());
                 const histories = document.querySelectorAll('.history');
                 const chatSession = document.getElementById('chatSession');

@@ -3,14 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <title>有料ai</title>
-    <link rel="stylesheet" href="../static/css/page_chat.css">
-    <link rel="stylesheet" href="../static/css/page_chat_bottomUser.css">
-    <link rel="stylesheet" href="../static/css/page_chat_loginRegister.css">
-    <link rel="stylesheet" href="../static/css/page_chat_inputBox.css">
-    <link rel="stylesheet" href="../static/css/page_chat_initScrollToBottom.css">
-    <link rel="stylesheet" href="../static/css/page_job_hunt.css">
-    <link rel="stylesheet" href="../static/css/page_chat_apiGuide.css">
-    <link rel="stylesheet" href="../static/css/page_chat_floatDock.css">
+    <!-- 提前设置主题，避免刷新时闪一下暗色 -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('app_theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="../static/css/page_chat.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_bottomUser.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_loginRegister.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_inputBox.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_initScrollToBottom.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_job_hunt.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_apiGuide.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_chat_floatDock.css?v={{ ASSET_VERSION }}">
+    <link rel="stylesheet" href="../static/css/page_wallet.css?v={{ ASSET_VERSION }}">
     <link rel="icon" href="../static/a.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -21,8 +33,30 @@
 <button class="guide-btn" id="openGuideBtn" data-i18n="guide_btn" title="如何接入 AI 大模型 API">接入教程</button>
 <button class="login-btn" id="openLoginBtn" data-i18n="login">登录</button>
 
-<!-- 右侧悬浮图标：在线客服 + 下载 App（链接在 static/js/config.js 中自定义） -->
+<!-- 右侧悬浮图标：分享APP → 下载APP → 在线客服（从上到下） -->
 <div class="float-dock" id="floatDock">
+    <!-- 分享APP：点击弹出分享弹窗（不跳转） -->
+    <button class="float-dock-item" id="floatShareBtn" type="button"
+            data-i18n-title="float_share" title="分享APP">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+        <span class="float-dock-label" data-i18n="float_share">分享APP</span>
+    </button>
+    <a class="float-dock-item" id="floatAppBtn" href="#" target="_blank" rel="noopener"
+       data-i18n-title="float_app" title="下载 App" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12" y2="18"></line>
+        </svg>
+        <span class="float-dock-label" data-i18n="float_app">下载App</span>
+    </a>
     <a class="float-dock-item" id="floatServiceBtn" href="#" target="_blank" rel="noopener"
        data-i18n-title="float_service" title="在线客服" hidden>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
@@ -33,15 +67,23 @@
         </svg>
         <span class="float-dock-label" data-i18n="float_service">在线客服</span>
     </a>
-    <a class="float-dock-item" id="floatAppBtn" href="#" target="_blank" rel="noopener"
-       data-i18n-title="float_app" title="下载 App" hidden>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <line x1="12" y1="18" x2="12" y2="18"></line>
-        </svg>
-        <span class="float-dock-label" data-i18n="float_app">下载App</span>
-    </a>
+</div>
+
+<!-- 分享APP 弹窗 -->
+<div class="share-modal" id="shareModal">
+    <div class="share-overlay" id="shareOverlay"></div>
+    <div class="share-content">
+        <button class="close-btn" id="closeShareBtn" aria-label="关闭">×</button>
+        <div class="share-header">
+            <div class="share-title" data-i18n="share_modal_title">分享APP 赚美金</div>
+            <div class="share-intro" id="shareIntro"></div>
+        </div>
+        <label class="share-link-label" data-i18n="share_link_label">你的专属推广链接</label>
+        <div class="share-link-row">
+            <input type="text" id="shareLinkInput" readonly>
+            <button class="share-copy-btn" id="shareCopyBtn" data-i18n="share_copy_btn">一键复制</button>
+        </div>
+    </div>
 </div>
 
 <!-- API 接入教程弹窗 -->
@@ -221,6 +263,14 @@ LLM_API_KEY=ollama</pre>
                 </svg>
                 <span data-i18n="jobhunt_entry">简历制作 · 岗位推荐</span>
             </div>
+            <div class="sidebar-section-label" data-i18n="sidebar_wallet_section">我的收益</div>
+            <div class="sidebar-nav-item" id="walletEntry" title="推广美金 · 提现">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+                <span data-i18n="wallet_entry">推广钱包 · 提现</span>
+            </div>
             <div class="history" data-i18n="history_label">历史会话</div>
             <!--
             <div title="1779986166533" class="history title">我是历史记录下的标签</div>
@@ -281,12 +331,23 @@ LLM_API_KEY=ollama</pre>
                 </button>
 
                 <button class="lang-toggle-btn" id="langToggleBtn" data-i18n-title="lang_toggle_title" title="切换中/英文">EN</button>
+                <button class="theme-toggle-btn" id="themeToggleBtn" data-i18n-title="theme_toggle_title" title="切换亮/暗主题" aria-label="切换主题">
+                    <svg class="theme-icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                    <svg class="theme-icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
             </div>
             <div class="chat-session" id="chatSession" data-i18n="new_session">新对话</div>
         </div>
 
         <div class="chat-box" id="chatBox">
             <div class="empty-state" id="emptyState">
+                <!-- 推广横幅（红框位置：标题栏下、logo上），文案后台可配置 -->
+                <div class="promo-banner" id="promoBanner" hidden></div>
                 <div class="empty-logo">
                     <img src="../static/a.png" alt="有料ai">
                 </div>
@@ -342,6 +403,42 @@ LLM_API_KEY=ollama</pre>
                     <button type="button" class="job-btn job-btn-primary" id="jobMatchBtn" data-i18n="job_match_btn">匹配推荐岗位</button>
                 </div>
                 <div class="job-status-tip" id="jobMatchStatus"></div>
+            </section>
+        </div>
+
+        <!-- 推广钱包 / 提现 面板 -->
+        <div class="wallet-panel hidden" id="walletPanel">
+            <div class="wallet-header">
+                <h2 data-i18n="wallet_title">推广钱包</h2>
+                <p data-i18n="wallet_desc">分享专属链接邀请好友下载APP，即可赚取美金奖励并提现到 PayPal。</p>
+            </div>
+
+            <div class="wallet-cards">
+                <div class="wallet-card">
+                    <div class="wallet-card-label" data-i18n="wallet_balance">当前美金余额</div>
+                    <div class="wallet-card-value"><span class="wallet-cur">$</span><span id="walletBalance">0.00</span></div>
+                </div>
+                <div class="wallet-card">
+                    <div class="wallet-card-label" data-i18n="wallet_referrals">累计有效推广</div>
+                    <div class="wallet-card-value"><span id="walletCount">0</span><span class="wallet-unit" data-i18n="wallet_people"> 人</span></div>
+                </div>
+            </div>
+
+            <section class="wallet-section">
+                <div class="wallet-section-title" data-i18n="wallet_withdraw_title">申请提现</div>
+                <p class="wallet-hint" data-i18n="wallet_withdraw_hint">提交后将提现全部余额，后台人工审核后打款到你的 PayPal。</p>
+                <div class="wallet-form">
+                    <input type="email" id="walletPaypalInput" data-i18n-ph="wallet_paypal_ph" placeholder="请输入你的 PayPal 邮箱">
+                    <button type="button" class="wallet-btn wallet-btn-primary" id="walletWithdrawBtn" data-i18n="wallet_withdraw_btn">提交提现申请</button>
+                </div>
+                <div class="wallet-status-tip" id="walletWithdrawStatus"></div>
+            </section>
+
+            <section class="wallet-section">
+                <div class="wallet-section-title" data-i18n="wallet_records_title">提现记录</div>
+                <div class="wallet-records" id="walletRecords">
+                    <p class="wallet-status-tip" data-i18n="wallet_no_records">暂无提现记录</p>
+                </div>
             </section>
         </div>
 
@@ -416,18 +513,21 @@ LLM_API_KEY=ollama</pre>
 </div>
 
 
-<script src="../static/js/config.js"></script>
-<script src="../static/js/i18n.js"></script>
-<script src="../static/js/showLoginExpiredModal.js"></script>
-<script src="../static/js/page_chat.js"></script>
-<script src="../static/js/LoginRegister.js"></script>
-<script src="../static/js/inputTool.js"></script>
-<script src="../static/js/skillsTool.js"></script>
-<script src="../static/js/fileAttachment.js"></script>
-<script src="../static/js/jobHunt.js"></script>
-<script src="../static/js/apiGuide.js"></script>
-<script src="../static/js/floatDock.js"></script>
-<script src="../static/js/page_chat_initScrollToBottom.js"></script>
+<script src="../static/js/config.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/theme.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/i18n.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/showLoginExpiredModal.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/referral.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/page_chat.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/LoginRegister.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/inputTool.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/skillsTool.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/fileAttachment.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/jobHunt.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/apiGuide.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/floatDock.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/wallet.js?v={{ ASSET_VERSION }}"></script>
+<script src="../static/js/page_chat_initScrollToBottom.js?v={{ ASSET_VERSION }}"></script>
 
 </body>
 </html>

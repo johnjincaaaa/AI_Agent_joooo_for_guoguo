@@ -1,0 +1,208 @@
+/* ==================== 推广钱包 / 提现 面板 ==================== */
+.wallet-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 24px 40px;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+.wallet-panel.hidden {
+    display: none !important;
+}
+
+.wallet-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+.wallet-header p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0 0 20px;
+}
+
+/* 数据卡片 */
+.wallet-cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.wallet-card {
+    flex: 1;
+    min-width: 200px;
+    padding: 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+}
+.wallet-card-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+.wallet-card-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.wallet-cur {
+    font-size: 20px;
+    margin-right: 2px;
+    color: #f0a02a;
+}
+.wallet-unit {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+/* 余额卡片高亮 */
+.wallet-card:first-child .wallet-card-value {
+    color: #ffc06a;
+}
+
+/* 分区 */
+.wallet-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+.wallet-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+.wallet-hint {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0 0 14px;
+}
+
+/* 提现表单 */
+.wallet-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.wallet-form input {
+    flex: 1;
+    min-width: 220px;
+    padding: 12px 15px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--field-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+.wallet-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.wallet-btn {
+    padding: 12px 22px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, filter 0.2s ease;
+}
+.wallet-btn-primary {
+    background: var(--accent);
+    color: #fff;
+}
+.wallet-btn-primary:hover {
+    background: var(--accent-hover);
+}
+.wallet-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.wallet-status-tip {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.wallet-status-ok {
+    color: #2fae6a;
+}
+.wallet-status-error {
+    color: #ff6b6b;
+}
+
+/* 提现记录 */
+.wallet-records {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.wallet-record {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+}
+.wallet-record-main {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+.wallet-record-amount {
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffc06a;
+}
+.wallet-record-email {
+    font-size: 13px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+.wallet-record-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.wallet-record-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.wallet-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+}
+.wallet-badge-pending {
+    background: rgba(240, 160, 42, 0.16);
+    color: #f0a02a;
+}
+.wallet-badge-paid {
+    background: rgba(47, 174, 106, 0.16);
+    color: #2fae6a;
+}
+.wallet-badge-rejected {
+    background: rgba(255, 107, 107, 0.16);
+    color: #ff6b6b;
+}
+
+@media (max-width: 768px) {
+    .wallet-panel { padding: 18px 14px 40px; }
+    .wallet-cards { gap: 10px; }
+    .wallet-card { min-width: 140px; padding: 16px; }
+    .wallet-card-value { font-size: 24px; }
+}

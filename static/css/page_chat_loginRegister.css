@@ -16,7 +16,7 @@
 .modal-overlay {
     width: 100%;
     height: 100%;
-    background: rgba(8, 9, 13, 0.82);
+    background: var(--modal-overlay);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
 }
@@ -27,7 +27,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(27, 30, 37, 0.92);
+    background: var(--modal-bg);
     padding: 32px 30px 30px;
     border-radius: 22px;
     width: 372px;
@@ -52,7 +52,7 @@
     margin-top: 14px;
     font-size: 18px;
     font-weight: 700;
-    color: #f0f1f5;
+    color: var(--modal-title);
 }
 .modal-subtitle {
     margin-top: 6px;
@@ -142,8 +142,8 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     font-size: 15px;
-    color: #f0f1f5;
-    background: rgba(13, 15, 19, 0.7);
+    color: var(--modal-title);
+    background: var(--field-bg);
     transition: all 0.25s ease;
     box-sizing: border-box;
 }
@@ -165,7 +165,7 @@
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    background: rgba(13, 15, 19, 0.7);
+    background: var(--field-bg);
     transition: all 0.25s ease;
     box-sizing: border-box;
 }
@@ -209,7 +209,7 @@
     transition: color 0.2s ease, background 0.2s ease;
 }
 .pwd-toggle-btn:hover {
-    color: #f0f1f5;
+    color: var(--modal-title);
     background: rgba(255, 255, 255, 0.08);
 }
 .pwd-toggle-btn .icon-eye-closed {

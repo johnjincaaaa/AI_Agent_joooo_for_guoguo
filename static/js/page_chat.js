@@ -99,9 +99,111 @@ document.addEventListener('DOMContentLoaded', initQuota);
 document.addEventListener('langchange', renderQuotaTip);
 
 
+// ==================== 推广文案（横幅 + 输入框）====================
+const API_PROMO_CONFIG = `${config.API_BASE_URL}/ai/promo/config`;
+// 后台配置：{promo_enabled, input_promo_enabled, banner_promo:{zh,en}, input_promo:{zh,en}}
+let promoConfig = null;
+
+// 当前输入框里的文案是否是"自动填充的推广文案"（用于判断是否该在用户操作时清空）
+function getInputPromoText() {
+    if (!promoConfig || !promoConfig.input_promo) return '';
+    const lang = typeof getLang === 'function' ? getLang() : 'zh';
+    return promoConfig.input_promo[lang] || promoConfig.input_promo.zh || '';
+}
+
+function getBannerText() {
+    if (!promoConfig || !promoConfig.banner_promo) return '';
+    const lang = typeof getLang === 'function' ? getLang() : 'zh';
+    return promoConfig.banner_promo[lang] || promoConfig.banner_promo.zh || '';
+}
+
+// 渲染空状态推广横幅
+function renderPromoBanner() {
+    const banner = document.getElementById('promoBanner');
+    if (!banner) return;
+    const text = getBannerText();
+    if (promoConfig && promoConfig.promo_enabled && text) {
+        banner.textContent = text;
+        banner.hidden = false;
+    } else {
+        banner.hidden = true;
+    }
+}
+
+// 若输入框为空且开关开启，则填入推广文案并打标记
+function fillInputPromoIfEmpty() {
+    const input = document.getElementById('userInput');
+    if (!input) return;
+    if (!promoConfig || !promoConfig.input_promo_enabled) return;
+    const text = getInputPromoText();
+    if (!text) return;
+    // 仅在输入框为空、或当前内容正是上一次填充的推广文案时才填
+    if (input.value.trim() === '' || input.dataset.promoFilled === '1') {
+        input.value = text;
+        input.dataset.promoFilled = '1';
+        input.dispatchEvent(new Event('input'));
+    }
+}
+
+// 用户开始真正输入时，清掉自动填充的推广文案
+function clearInputPromoOnUserAction() {
+    const input = document.getElementById('userInput');
+    if (!input) return;
+    if (input.dataset.promoFilled === '1') {
+        input.value = '';
+        delete input.dataset.promoFilled;
+        input.dispatchEvent(new Event('input'));
+    }
+}
+
+// 发送前判断：当前内容是否只是未清除的推广文案（视为空，不发给AI）
+function inputIsOnlyPromo(content) {
+    const input = document.getElementById('userInput');
+    return input && input.dataset.promoFilled === '1' && content === getInputPromoText().trim();
+}
+
+async function initPromo() {
+    try {
+        const res = await fetch(API_PROMO_CONFIG);
+        if (res.ok) {
+            promoConfig = await res.json();
+        }
+    } catch (e) {
+        console.warn('获取推广配置失败', e);
+    }
+    renderPromoBanner();
+    fillInputPromoIfEmpty();
+
+    const input = document.getElementById('userInput');
+    if (input) {
+        // 用户聚焦或按键即清除推广占位文案（focus 用一次性，避免每次聚焦都清）
+        input.addEventListener('focus', clearInputPromoOnUserAction, {once: false});
+        input.addEventListener('beforeinput', clearInputPromoOnUserAction);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initPromo);
+document.addEventListener('langchange', () => {
+    renderPromoBanner();
+    // 语言切换时，如果输入框仍是自动填充的推广文案，则切换成新语言版本
+    const input = document.getElementById('userInput');
+    if (input && input.dataset.promoFilled === '1') {
+        input.value = getInputPromoText();
+        input.dispatchEvent(new Event('input'));
+    }
+});
+
+// 供 createNewSession 调用：新建会话后重新填充输入框推广文案
+window.refillInputPromo = fillInputPromoIfEmpty;
+
+
 async function sendMessage() {
     const input = document.getElementById("userInput");
-    const content = input.value.trim();
+    let content = input.value.trim();
+    // 若内容只是未清除的推广占位文案，视为未输入
+    if (typeof inputIsOnlyPromo === 'function' && inputIsOnlyPromo(content)) {
+        content = '';
+    }
     const chatSession = document.getElementById('chatSession');
     const sideBar = document.getElementById('sideBar');
     const sendMessage_ele = document.getElementById("sendMessage");
@@ -271,6 +373,7 @@ async function sendMessage() {
             // 对历史会话操作：拉取数据库对话数据到对话框 && 清除class active 并激活点击历史对话
             div.addEventListener('click', async function () {
                 if (typeof exitJobHuntMode === 'function') exitJobHuntMode();
+                if (typeof exitWalletMode === 'function') exitWalletMode();
                 // 清空当前右边聊天记录,清空chatSession,调取数据库存入全部聊天记录，chatDate取全部聊天记录
                 document.getElementById("chatBox").querySelectorAll(".message").forEach(el => el.remove());
                 const histories = document.querySelectorAll('.history');
@@ -530,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function createNewSession() {
     if (typeof exitJobHuntMode === 'function') exitJobHuntMode();
+    if (typeof exitWalletMode === 'function') exitWalletMode();
     const chatSession = document.getElementById('chatSession');
     // 清除所有 class="message" 的子元素 并清空缓存
     document.querySelectorAll("#chatBox .message").forEach(el => el.remove());
@@ -544,6 +648,8 @@ function createNewSession() {
     if (typeof clearPendingAttachments === 'function') {
         clearPendingAttachments();
     }
-
+    // 新建会话：重新展示横幅 + 填充输入框推广文案
+    if (typeof renderPromoBanner === 'function') renderPromoBanner();
+    if (typeof refillInputPromo === 'function') refillInputPromo();
 }
 

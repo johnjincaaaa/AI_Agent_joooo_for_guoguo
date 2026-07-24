@@ -20,6 +20,7 @@ from config import *
 from token_utils import create_access_token, verify_token, get_optional_user_id
 from password_utils import hash_password, verify_password, needs_rehash
 from rate_limit import check_anonymous_rate_limit, get_anonymous_remaining
+from services import promo
 import tools
 from tools.skills_registry import get_skill_catalog, resolve_tools
 from services.job_mock_data import RESUME_TEMPLATES, MOCK_JOBS, match_jobs
@@ -43,6 +44,12 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 templates = Jinja2Templates(directory="templates")  # 自动找 HTML
+
+# 静态资源版本号：附加到 css/js 链接后（?v=），改动后浏览器会自动拉新，避免缓存旧文件。
+# 用启动时间戳，每次重启服务即刷新缓存；生产可改成固定版本号或 git commit。
+import time as _time
+ASSET_VERSION = str(int(_time.time()))
+templates.env.globals["ASSET_VERSION"] = ASSET_VERSION
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"}
 ALLOWED_DOCUMENT_TYPES = {
@@ -729,6 +736,117 @@ def match_job_recommendations(
     profile = request.profile.model_dump()
     jobs = match_jobs(profile, request.resume_content)
     return {"code": 200, "jobs": jobs, "source": "mock"}
+
+
+# ==================== 推广拉新 / 钱包 ====================
+
+class TrackDownloadRequest(BaseModel):
+    ref: str = ""
+    fingerprint: str = ""
+
+
+class WithdrawSubmitRequest(BaseModel):
+    paypal_email: str
+
+
+@app.get("/ai/promo/config", summary="推广展示配置（公开）")
+def promo_config(db: Session = Depends(get_db)):
+    """返回前端展示所需的文案与开关，不含金额等敏感项。"""
+    cfg = promo.get_config_map(db)
+    return {
+        "code": 200,
+        "promo_enabled": promo._is_on(cfg.get("promo_enabled")),
+        "input_promo_enabled": promo._is_on(cfg.get("input_promo_enabled")),
+        "link_cache_days": promo._to_int(cfg.get("link_cache_days"), 30),
+        "popup_intro": {"zh": cfg.get("popup_intro_zh", ""), "en": cfg.get("popup_intro_en", "")},
+        "input_promo": {"zh": cfg.get("input_promo_zh", ""), "en": cfg.get("input_promo_en", "")},
+        "banner_promo": {"zh": cfg.get("banner_promo_zh", ""), "en": cfg.get("banner_promo_en", "")},
+    }
+
+
+@app.get("/ai/promo/my-link", summary="获取我的专属推广链接")
+def promo_my_link(
+        db: Session = Depends(get_db),
+        user_id: int = Depends(verify_token),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    code = promo.get_or_create_referral_code(db, user)
+    return {"code": 200, "referral_code": code, "link": promo.build_referral_link(db, code)}
+
+
+@app.post("/ai/promo/track-download", summary="记录下载控件点击并给推广人发奖（公开）")
+def promo_track_download(
+        request: TrackDownloadRequest,
+        http_request: Request,
+        db: Session = Depends(get_db),
+        user_id: Optional[int] = Depends(get_optional_user_id),
+):
+    ip = promo.client_ip(http_request)
+    result = promo.track_download(
+        db,
+        ref_code=(request.ref or "").strip(),
+        fingerprint=(request.fingerprint or "").strip(),
+        ip=ip,
+        visitor_user_id=user_id,
+    )
+    return {"code": 200, **result.to_dict()}
+
+
+@app.get("/ai/promo/wallet", summary="我的钱包（余额 + 提现记录）")
+def promo_wallet(
+        db: Session = Depends(get_db),
+        user_id: int = Depends(verify_token),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    records = db.query(WithdrawRequest).filter(
+        WithdrawRequest.user_id == user_id
+    ).order_by(WithdrawRequest.created_at.desc()).all()
+    return {
+        "code": 200,
+        "balance": round(user.balance_usd or 0.0, 2),
+        "referral_count": user.referral_count or 0,
+        "records": [
+            {
+                "id": r.id,
+                "amount": round(r.amount, 2),
+                "paypal_email": r.paypal_email,
+                "status": r.status,
+                "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+            }
+            for r in records
+        ],
+    }
+
+
+@app.post("/ai/promo/withdraw", summary="提交提现申请（提现全部余额）")
+def promo_withdraw(
+        request: WithdrawSubmitRequest,
+        db: Session = Depends(get_db),
+        user_id: int = Depends(verify_token),
+):
+    email = (request.paypal_email or "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "请输入有效的 PayPal 邮箱"})
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+
+    balance = round(user.balance_usd or 0.0, 2)
+    if balance <= 0:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "余额不足，无法提现"})
+
+    # 提现全部余额：建 pending 申请并从余额扣除转入待审核
+    # 注：后台驳回时需手动把 amount 加回 balance（MVP 不做自动补偿）
+    record = WithdrawRequest(user_id=user_id, amount=balance, paypal_email=email, status="pending")
+    db.add(record)
+    user.balance_usd = 0.0
+    db.commit()
+    return {"code": 200, "msg": "提现申请已提交，等待人工审核", "amount": balance}
 
 
 # ------------------- 接口：登录 ------------------

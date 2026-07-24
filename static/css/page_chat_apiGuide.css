@@ -39,6 +39,35 @@
     color: var(--accent);
 }
 
+/* 主题切换按钮（太阳/月亮图标） */
+.theme-toggle-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    padding: 0;
+    margin-left: 2px;
+    align-self: center;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 100px;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.theme-toggle-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+/* 暗色主题下显示“太阳”（点击切到亮色）；亮色主题下显示“月亮” */
+.theme-toggle-btn .theme-icon-moon { display: none; }
+.theme-toggle-btn .theme-icon-sun { display: block; }
+[data-theme="light"] .theme-toggle-btn .theme-icon-sun { display: none; }
+[data-theme="light"] .theme-toggle-btn .theme-icon-moon { display: block; }
+
 /* ==========================================================
    API 接入教程 · 按钮 + 弹窗（深色磨砂，与登录弹窗风格一致）
 ========================================================== */
@@ -75,7 +104,7 @@
 .guide-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(8, 9, 13, 0.82);
+    background: var(--modal-overlay);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
 }
@@ -88,7 +117,7 @@
     width: min(560px, calc(100vw - 40px));
     max-height: calc(100vh - 60px);
     overflow-y: auto;
-    background: rgba(27, 30, 37, 0.96);
+    background: var(--modal-bg);
     padding: 28px 30px 24px;
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55),
@@ -123,7 +152,7 @@
 .guide-title {
     font-size: 19px;
     font-weight: 700;
-    color: #f0f1f5;
+    color: var(--modal-title);
 }
 .guide-subtitle {
     margin-top: 8px;

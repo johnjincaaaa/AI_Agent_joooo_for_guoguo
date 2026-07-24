@@ -37,7 +37,23 @@
     box-shadow: 0 8px 26px rgba(76, 141, 255, 0.5);
 }
 
-/* 下载 App 用中性深色，和客服做区分 */
+/* button 元素重置（分享按钮是 <button>） */
+.float-dock-item {
+    font: inherit;
+}
+
+/* 分享APP：主色渐变，最醒目 */
+.float-dock-item#floatShareBtn {
+    background: linear-gradient(135deg, #f0a02a, #ff7a3c);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 6px 20px rgba(240, 140, 42, 0.4);
+}
+.float-dock-item#floatShareBtn:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 8px 26px rgba(240, 140, 42, 0.55);
+}
+
+/* 下载 App 用中性深色，和分享/客服做区分 */
 .float-dock-item#floatAppBtn {
     background: var(--bg-elevated);
     color: var(--text-primary);
@@ -58,6 +74,112 @@
     font-weight: 600;
     line-height: 1.1;
     letter-spacing: 0.2px;
+}
+
+/* ==========================================================
+   分享APP 弹窗（深色磨砂，与教程/登录弹窗风格一致）
+========================================================== */
+.share-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+}
+.share-modal.show {
+    display: block;
+}
+.share-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--modal-overlay);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+.share-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(460px, calc(100vw - 40px));
+    background: var(--modal-bg);
+    padding: 28px 30px 26px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+.share-content .close-btn {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 8px;
+}
+.share-content .close-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+.share-header {
+    margin-bottom: 20px;
+}
+.share-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--modal-title);
+}
+.share-intro {
+    margin-top: 10px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    white-space: pre-line;
+}
+.share-link-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.share-link-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.share-link-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--field-bg);
+    color: var(--text-primary);
+    font-size: 13.5px;
+}
+.share-copy-btn {
+    flex-shrink: 0;
+    padding: 0 18px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+}
+.share-copy-btn:hover {
+    background: var(--accent-hover);
+}
+.share-copy-btn.copied {
+    background: #2fae6a;
 }
 
 /* ----------------------- 移动端适配 ----------------------- */

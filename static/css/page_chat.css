@@ -30,6 +30,53 @@
     --radius-lg: 18px;
 
     --shadow-soft: 0 6px 24px rgba(0, 0, 0, 0.35);
+
+    /* 代码块 / 弹窗遮罩等硬编码色，抽成变量以便主题切换 */
+    --code-bg: #0a0c10;
+    --code-text: #d6dae0;
+    --inline-code-text: #e6a673;
+    --scrollbar-thumb: #2c313a;
+    --modal-overlay: rgba(8, 9, 13, 0.82);
+    --modal-bg: rgba(27, 30, 37, 0.96);
+    --modal-title: #f0f1f5;
+    --field-bg: rgba(13, 15, 19, 0.7);
+    --topbar-bg: rgba(13, 15, 19, 0.85);
+    --promo-text: #ffd9a8;
+}
+
+/* ==========================================================
+   亮色主题：仅覆盖设计变量，布局/组件自动适配
+========================================================== */
+[data-theme="light"] {
+    --bg-app: #f5f6f8;
+    --bg-sidebar: #ffffff;
+    --bg-chat: #f5f6f8;
+    --bg-elevated: #ffffff;
+    --bg-hover: #eceef2;
+
+    --text-primary: #1d2129;
+    --text-secondary: #5a616e;
+    --text-muted: #8a909c;
+
+    --accent: #2f6fe0;
+    --accent-hover: #245bc0;
+    --accent-soft: rgba(47, 111, 224, 0.12);
+
+    --border: rgba(0, 0, 0, 0.09);
+    --border-strong: rgba(0, 0, 0, 0.16);
+
+    --shadow-soft: 0 6px 24px rgba(15, 23, 42, 0.12);
+
+    --code-bg: #f0f2f5;
+    --code-text: #2b303a;
+    --inline-code-text: #b5561b;
+    --scrollbar-thumb: #c7ccd4;
+    --modal-overlay: rgba(30, 34, 42, 0.45);
+    --modal-bg: #ffffff;
+    --modal-title: #1d2129;
+    --field-bg: #f0f2f5;
+    --topbar-bg: rgba(255, 255, 255, 0.85);
+    --promo-text: #a85410;
 }
 
 * {
@@ -52,6 +99,18 @@ body {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+}
+
+/* 主题切换时给主要面色加过渡，避免生硬跳变 */
+body,
+.sidebar,
+.chat-box,
+.chat-whole,
+.input-box-wrapper,
+.message.ai,
+.wallet-card,
+.wallet-record {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 /* 顶层布局 */
@@ -81,14 +140,14 @@ body {
     transition: width 0.2s ease;
 
     scrollbar-width: thin;
-    scrollbar-color: #2c313a transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
 .sidebar::-webkit-scrollbar-thumb {
-    background: #2c313a;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
 }
 
@@ -175,7 +234,7 @@ body {
     height: 56px;
     padding: 0 16px;
     border-bottom: 1px solid var(--border);
-    background: rgba(13, 15, 19, 0.85);
+    background: var(--topbar-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 50;
@@ -229,13 +288,13 @@ body {
     padding: 24px 0 8px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #2c313a transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 .chat-box::-webkit-scrollbar {
     width: 8px;
 }
 .chat-box::-webkit-scrollbar-thumb {
-    background: #2c313a;
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
 }
 
@@ -339,15 +398,15 @@ body {
 }
 .message.ai a:hover { text-decoration: underline; }
 .message.ai code {
-    background: var(--bg-elevated);
+    background: var(--code-bg);
     padding: 2px 6px;
     border-radius: 6px;
     font-family: "SFMono-Regular", Consolas, Menlo, monospace;
     font-size: 13.5px;
-    color: #e6a673;
+    color: var(--inline-code-text);
 }
 .message.ai pre {
-    background: #0a0c10;
+    background: var(--code-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: 14px 16px;
@@ -357,7 +416,7 @@ body {
 .message.ai pre code {
     background: transparent;
     padding: 0;
-    color: #d6dae0;
+    color: var(--code-text);
     font-size: 13.5px;
     line-height: 1.6;
 }
@@ -411,6 +470,25 @@ body {
     font-size: 14px;
     color: var(--text-muted);
 }
+/* 推广横幅（空状态顶部，标题栏下方） */
+.promo-banner {
+    width: min(560px, calc(100% - 32px));
+    margin: 0 auto 22px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(240, 160, 42, 0.16), rgba(255, 122, 60, 0.16));
+    border: 1px solid rgba(240, 160, 42, 0.4);
+    border-radius: var(--radius-md);
+    color: var(--promo-text);
+    font-size: 14px;
+    line-height: 1.7;
+    text-align: center;
+    white-space: pre-line;
+    font-weight: 500;
+}
+.promo-banner[hidden] {
+    display: none !important;
+}
+
 /* 一旦出现消息，自动隐藏空状态 */
 .empty-state.hidden {
     display: none !important;

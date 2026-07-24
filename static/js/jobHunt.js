@@ -351,6 +351,7 @@ function updateStepTags(activeStep) {
 }
 
 function enterJobHuntMode() {
+    if (typeof exitWalletMode === 'function') exitWalletMode();
     isJobHuntMode = true;
 
     document.querySelectorAll('.history.title').forEach(el => el.classList.remove('active'));

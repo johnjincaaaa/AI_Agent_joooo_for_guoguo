@@ -16,13 +16,29 @@ const LANG = {
         guide_btn: '接入教程',
         lang_toggle_title: '切换中/英文',
 
+        // 主题切换
+        theme_toggle_title: '切换亮/暗主题',
+        theme_to_light: '切换到亮色主题',
+        theme_to_dark: '切换到暗色主题',
+
         // 右侧悬浮图标
+        float_share: '分享APP',
         float_service: '在线客服',
         float_app: '下载App',
+
+        // 分享弹窗
+        share_modal_title: '分享APP 赚美金',
+        share_link_label: '你的专属推广链接',
+        share_copy_btn: '一键复制',
+        share_copied: '已复制',
+        share_need_login: '登录后才能获取专属推广链接',
+        share_need_login_sub: '登录即可分享赚美金',
 
         // 侧边栏
         sidebar_jobhunt_section: '找工作',
         jobhunt_entry: '简历制作 · 岗位推荐',
+        sidebar_wallet_section: '我的收益',
+        wallet_entry: '推广钱包 · 提现',
         history_label: '历史会话',
         new_session: '新对话',
         logout: '退出登录',
@@ -94,6 +110,27 @@ const LANG = {
         quota_remaining_1: '今日免费体验还剩 ',
         quota_remaining_2: ' 次',
         quota_low_tip: '免费次数快用完啦，注册成为会员可无限畅聊',
+
+        // 推广钱包 / 提现
+        wallet_title: '推广钱包',
+        wallet_desc: '分享专属链接邀请好友下载APP，即可赚取美金奖励并提现到 PayPal。',
+        wallet_balance: '当前美金余额',
+        wallet_referrals: '累计有效推广',
+        wallet_people: ' 人',
+        wallet_withdraw_title: '申请提现',
+        wallet_withdraw_hint: '提交后将提现全部余额，后台人工审核后打款到你的 PayPal。',
+        wallet_paypal_ph: '请输入你的 PayPal 邮箱',
+        wallet_withdraw_btn: '提交提现申请',
+        wallet_records_title: '提现记录',
+        wallet_no_records: '暂无提现记录',
+        wallet_status_pending: '待审核',
+        wallet_status_paid: '已到账',
+        wallet_status_rejected: '已驳回',
+        wallet_invalid_email: '请输入有效的 PayPal 邮箱',
+        wallet_withdraw_ok: '提现申请已提交，等待人工审核',
+        wallet_withdraw_fail: '提现失败，请稍后重试',
+        wallet_need_login: '登录后才能查看推广钱包',
+        wallet_need_login_sub: '登录即可查看余额并提现',
 
         // 技能名（前端兜底）
         skill_image_name: '图片解析',
@@ -190,11 +227,25 @@ const LANG = {
         guide_btn: 'API Guide',
         lang_toggle_title: 'Switch Chinese / English',
 
+        theme_toggle_title: 'Toggle light/dark theme',
+        theme_to_light: 'Switch to light theme',
+        theme_to_dark: 'Switch to dark theme',
+
+        float_share: 'Share',
         float_service: 'Support',
         float_app: 'Get App',
 
+        share_modal_title: 'Share the App, Earn USD',
+        share_link_label: 'Your personal referral link',
+        share_copy_btn: 'Copy link',
+        share_copied: 'Copied',
+        share_need_login: 'Sign in to get your referral link',
+        share_need_login_sub: 'Sign in to share and earn USD',
+
         sidebar_jobhunt_section: 'Job Hunt',
         jobhunt_entry: 'Resume Builder · Job Match',
+        sidebar_wallet_section: 'My Earnings',
+        wallet_entry: 'Wallet · Withdraw',
         history_label: 'History',
         new_session: 'New Chat',
         logout: 'Log out',
@@ -260,6 +311,26 @@ const LANG = {
         quota_remaining_1: 'Free trials left today: ',
         quota_remaining_2: '',
         quota_low_tip: 'Almost out of free trials. Register to chat without limits.',
+
+        wallet_title: 'Referral Wallet',
+        wallet_desc: 'Share your link, invite friends to download the App, earn USD and withdraw to PayPal.',
+        wallet_balance: 'USD Balance',
+        wallet_referrals: 'Valid Referrals',
+        wallet_people: '',
+        wallet_withdraw_title: 'Request Withdrawal',
+        wallet_withdraw_hint: 'Submitting withdraws your full balance; paid to your PayPal after manual review.',
+        wallet_paypal_ph: 'Enter your PayPal email',
+        wallet_withdraw_btn: 'Submit Withdrawal',
+        wallet_records_title: 'Withdrawal Records',
+        wallet_no_records: 'No withdrawal records yet',
+        wallet_status_pending: 'Pending',
+        wallet_status_paid: 'Paid',
+        wallet_status_rejected: 'Rejected',
+        wallet_invalid_email: 'Please enter a valid PayPal email',
+        wallet_withdraw_ok: 'Withdrawal request submitted, awaiting review',
+        wallet_withdraw_fail: 'Withdrawal failed, please try again later',
+        wallet_need_login: 'Sign in to view your wallet',
+        wallet_need_login_sub: 'Sign in to see your balance and withdraw',
 
         skill_image_name: 'Image Analysis',
         skill_image_desc: 'Analyze image content, size, format and more',
@@ -353,7 +424,10 @@ function getLang() {
 
 function t(key) {
     const lang = getLang();
-    return (LANG[lang] && LANG[lang][key]) || (LANG.zh[key]) || key;
+    // 用 in 判断而非真值，避免空字符串文案被当成缺失而回退到中文
+    if (LANG[lang] && key in LANG[lang]) return LANG[lang][key];
+    if (key in LANG.zh) return LANG.zh[key];
+    return key;
 }
 
 function applyStaticI18n() {
