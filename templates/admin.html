@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>有料ai · 后台管理</title>
+    <link rel="stylesheet" href="../static/css/admin.css?v={{ ASSET_VERSION }}">
+    <link rel="icon" href="../static/a.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<!-- 登录框 -->
+<div class="admin-login" id="adminLogin">
+    <div class="admin-login-card">
+        <div class="admin-login-title">有料ai · 后台管理</div>
+        <div class="admin-login-sub">请输入管理员账号密码</div>
+        <input type="text" id="adminUser" placeholder="管理员账号" autocomplete="username">
+        <input type="password" id="adminPass" placeholder="密码" autocomplete="current-password">
+        <button id="adminLoginBtn">登录</button>
+        <div class="admin-login-err" id="adminLoginErr"></div>
+    </div>
+</div>
+
+<!-- 主体 -->
+<div class="admin-shell" id="adminShell" hidden>
+    <header class="admin-header">
+        <div class="admin-brand">有料ai 后台</div>
+        <nav class="admin-tabs">
+            <button class="admin-tab active" data-tab="dashboard">数据看板</button>
+            <button class="admin-tab" data-tab="withdraws">提现审批</button>
+            <button class="admin-tab" data-tab="users">用户管理</button>
+            <button class="admin-tab" data-tab="config">配置管理</button>
+        </nav>
+        <button class="admin-logout" id="adminLogoutBtn">退出</button>
+    </header>
+
+    <main class="admin-main">
+        <!-- 数据看板 -->
+        <section class="admin-panel active" id="panel-dashboard">
+            <div class="stat-grid" id="statGrid"></div>
+            <div class="trend-box">
+                <div class="trend-title">近 7 天趋势</div>
+                <div class="trend-chart" id="trendChart"></div>
+                <div class="trend-legend">
+                    <span><i class="dot dot-pv"></i>PV 访问</span>
+                    <span><i class="dot dot-uv"></i>UV 人头</span>
+                    <span><i class="dot dot-dl"></i>下载点击</span>
+                    <span><i class="dot dot-rf"></i>有效推广</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 提现审批 -->
+        <section class="admin-panel" id="panel-withdraws">
+            <div class="panel-toolbar">
+                <select id="withdrawFilter">
+                    <option value="">全部状态</option>
+                    <option value="pending">待审核</option>
+                    <option value="paid">已到账</option>
+                    <option value="rejected">已驳回</option>
+                </select>
+                <button class="btn-refresh" id="withdrawRefresh">刷新</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>ID</th><th>用户</th><th>金额</th><th>PayPal 邮箱</th><th>状态</th><th>申请时间</th><th>操作</th></tr>
+                </thead>
+                <tbody id="withdrawTbody"></tbody>
+            </table>
+        </section>
+
+        <!-- 用户管理 -->
+        <section class="admin-panel" id="panel-users">
+            <div class="panel-toolbar">
+                <input type="text" id="userSearch" placeholder="搜索用户名…">
+                <button class="btn-refresh" id="userRefresh">搜索</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>ID</th><th>用户名</th><th>余额($)</th><th>推广数</th><th>推广码</th><th>会员到期</th><th>注册时间</th><th>操作</th></tr>
+                </thead>
+                <tbody id="userTbody"></tbody>
+            </table>
+        </section>
+
+        <!-- 配置管理 -->
+        <section class="admin-panel" id="panel-config">
+            <div class="config-hint">修改后点「保存全部」生效。奖励金额、阈值、文案、开关都可改。</div>
+            <div class="config-form" id="configForm"></div>
+            <button class="btn-save" id="configSaveBtn">保存全部</button>
+            <div class="config-status" id="configStatus"></div>
+        </section>
+    </main>
+</div>
+
+<script src="../static/js/admin.js?v={{ ASSET_VERSION }}"></script>
+</body>
+</html>
