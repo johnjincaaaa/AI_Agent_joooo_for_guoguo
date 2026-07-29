@@ -17,10 +17,15 @@ import config
 logger = logging.getLogger("uvicorn.info")
 
 from config import *
-from token_utils import create_access_token, verify_token, get_optional_user_id
+from token_utils import (
+    create_access_token, verify_token, get_optional_user_id,
+    create_admin_token, verify_admin_token,
+)
 from password_utils import hash_password, verify_password, needs_rehash
 from rate_limit import check_anonymous_rate_limit, get_anonymous_remaining
 from services import promo
+# 提前引入 ORM（get_db 等），供靠前定义的路由用作默认参数（默认值在定义时求值）
+from sqlOrm import *
 import tools
 from tools.skills_registry import get_skill_catalog, resolve_tools
 from services.job_mock_data import RESUME_TEMPLATES, MOCK_JOBS, match_jobs
@@ -78,7 +83,18 @@ app.add_middleware(
 # ------------------- 聊天页 -------------------
 @app.get("/chat", summary="聊天页",
          description="启动入口，返回html")
-def chat_page(request: Request):
+def chat_page(request: Request, db: Session = Depends(get_db)):
+    # 访问埋点（PV/UV）——失败绝不影响页面返回
+    try:
+        promo.record_page_visit(
+            db,
+            ip=promo.client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+            ref_code=request.query_params.get("ref", ""),
+            path="/chat",
+        )
+    except Exception as e:
+        logger.warning(f"[埋点] 访问记录失败：{e}")
     return templates.TemplateResponse(name="ai.html", request=request)
 
 
@@ -784,10 +800,19 @@ def promo_track_download(
         user_id: Optional[int] = Depends(get_optional_user_id),
 ):
     ip = promo.client_ip(http_request)
+    ref = (request.ref or "").strip()
+    fingerprint = (request.fingerprint or "").strip()
+
+    # 点击埋点（总点击量，可重复）——失败不影响发奖主流程
+    try:
+        promo.record_download_click(db, ip=ip, fingerprint=fingerprint, ref_code=ref)
+    except Exception as e:
+        logger.warning(f"[埋点] 下载点击记录失败：{e}")
+
     result = promo.track_download(
         db,
-        ref_code=(request.ref or "").strip(),
-        fingerprint=(request.fingerprint or "").strip(),
+        ref_code=ref,
+        fingerprint=fingerprint,
         ip=ip,
         visitor_user_id=user_id,
     )
@@ -841,12 +866,191 @@ def promo_withdraw(
         raise HTTPException(status_code=400, detail={"code": 400, "msg": "余额不足，无法提现"})
 
     # 提现全部余额：建 pending 申请并从余额扣除转入待审核
-    # 注：后台驳回时需手动把 amount 加回 balance（MVP 不做自动补偿）
+    # 后台驳回时会自动把 amount 退回 balance（见 /admin/api/withdraws/{id}/reject）
     record = WithdrawRequest(user_id=user_id, amount=balance, paypal_email=email, status="pending")
     db.add(record)
     user.balance_usd = 0.0
     db.commit()
     return {"code": 200, "msg": "提现申请已提交，等待人工审核", "amount": balance}
+
+
+# ==================== 后台管理 /admin ====================
+
+class AdminLoginForm(BaseModel):
+    username: str
+    password: str
+
+
+class AdminConfigUpdate(BaseModel):
+    items: dict  # {key: value, ...}
+
+
+class AdminBalanceAdjust(BaseModel):
+    amount: float          # 正数加钱，负数扣钱
+    reason: str = ""
+
+
+@app.get("/admin", summary="后台管理页", description="返回后台单页，数据靠 /admin/api/* 异步拉取")
+def admin_page(request: Request):
+    return templates.TemplateResponse(name="admin.html", request=request)
+
+
+@app.post("/admin/api/login", summary="后台登录")
+def admin_login(form: AdminLoginForm):
+    # 密码留空则一律拒绝，避免默认空密码被登入
+    if not config.ADMIN_PASSWORD:
+        raise HTTPException(status_code=403, detail={"code": 403, "msg": "后台未设置管理员密码，请在 .env 配置 ADMIN_PASSWORD"})
+    if form.username == config.ADMIN_USERNAME and form.password == config.ADMIN_PASSWORD:
+        return {"code": 200, "token": create_admin_token()}
+    raise HTTPException(status_code=401, detail={"code": 401, "msg": "账号或密码错误"})
+
+
+@app.get("/admin/api/stats", summary="后台数据看板")
+def admin_stats(db: Session = Depends(get_db), _: bool = Depends(verify_admin_token)):
+    return {"code": 200, **promo.get_admin_stats(db)}
+
+
+@app.get("/admin/api/users", summary="用户列表")
+def admin_users(
+        q: str = Query("", description="按用户名搜索"),
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0),
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    query = db.query(User)
+    if q.strip():
+        query = query.filter(User.username.like(f"%{q.strip()}%"))
+    total = query.count()
+    rows = query.order_by(User.id.desc()).offset(offset).limit(limit).all()
+    return {
+        "code": 200,
+        "total": total,
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "balance": round(u.balance_usd or 0.0, 2),
+                "referral_count": u.referral_count or 0,
+                "referral_code": u.referral_code or "",
+                "membership_expire_at": u.membership_expire_at.strftime("%Y-%m-%d") if u.membership_expire_at else "",
+                "register_time": u.register_time.strftime("%Y-%m-%d %H:%M") if u.register_time else "",
+            }
+            for u in rows
+        ],
+    }
+
+
+@app.post("/admin/api/users/{uid}/balance", summary="手动调整用户余额")
+def admin_adjust_balance(
+        uid: int,
+        body: AdminBalanceAdjust,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    new_balance = round((user.balance_usd or 0.0) + body.amount, 2)
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "调整后余额不能为负"})
+    user.balance_usd = new_balance
+    db.commit()
+    return {"code": 200, "msg": "已调整", "balance": new_balance}
+
+
+@app.get("/admin/api/withdraws", summary="提现申请列表")
+def admin_withdraws(
+        status_filter: str = Query("", alias="status", description="pending/paid/rejected，空=全部"),
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    query = db.query(WithdrawRequest)
+    if status_filter in ("pending", "paid", "rejected"):
+        query = query.filter(WithdrawRequest.status == status_filter)
+    rows = query.order_by(WithdrawRequest.created_at.desc()).all()
+    # 附带用户名
+    user_map = {u.id: u.username for u in db.query(User).all()}
+    return {
+        "code": 200,
+        "withdraws": [
+            {
+                "id": r.id,
+                "user_id": r.user_id,
+                "username": user_map.get(r.user_id, f"#{r.user_id}"),
+                "amount": round(r.amount, 2),
+                "paypal_email": r.paypal_email,
+                "status": r.status,
+                "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+                "reviewed_at": r.reviewed_at.strftime("%Y-%m-%d %H:%M") if r.reviewed_at else "",
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.post("/admin/api/withdraws/{wid}/approve", summary="通过提现")
+def admin_withdraw_approve(
+        wid: int,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    record = db.query(WithdrawRequest).filter(WithdrawRequest.id == wid).first()
+    if not record:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "提现记录不存在"})
+    if record.status != "pending":
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": f"该申请已是 {record.status}，无法重复处理"})
+    record.status = "paid"
+    record.reviewed_at = datetime.now()
+    db.commit()
+    return {"code": 200, "msg": "已标记为已打款"}
+
+
+@app.post("/admin/api/withdraws/{wid}/reject", summary="驳回提现（余额退回用户）")
+def admin_withdraw_reject(
+        wid: int,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    record = db.query(WithdrawRequest).filter(WithdrawRequest.id == wid).first()
+    if not record:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "提现记录不存在"})
+    if record.status != "pending":
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": f"该申请已是 {record.status}，无法重复处理"})
+    record.status = "rejected"
+    record.reviewed_at = datetime.now()
+    # 把冻结的金额退回用户余额
+    user = db.query(User).filter(User.id == record.user_id).first()
+    if user:
+        user.balance_usd = round((user.balance_usd or 0.0) + record.amount, 2)
+    db.commit()
+    return {"code": 200, "msg": "已驳回，金额已退回用户余额"}
+
+
+@app.get("/admin/api/config", summary="获取全部推广配置")
+def admin_get_config(db: Session = Depends(get_db), _: bool = Depends(verify_admin_token)):
+    return {"code": 200, "config": promo.get_config_map(db)}
+
+
+@app.post("/admin/api/config", summary="批量更新推广配置")
+def admin_set_config(
+        body: AdminConfigUpdate,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    allowed = set(PROMO_CONFIG_DEFAULTS.keys())
+    updated = []
+    for key, value in body.items.items():
+        if key not in allowed:
+            continue  # 只允许改已知配置项，忽略未知 key
+        row = db.query(PromoConfig).filter(PromoConfig.key == key).first()
+        if row:
+            row.value = str(value)
+        else:
+            db.add(PromoConfig(key=key, value=str(value)))
+        updated.append(key)
+    db.commit()
+    return {"code": 200, "msg": "已保存", "updated": updated}
 
 
 # ------------------- 接口：登录 ------------------

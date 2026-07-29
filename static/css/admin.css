@@ -1,0 +1,248 @@
+/* ==========================================================
+   后台管理 · 深色主题（不依赖外部资源）
+========================================================== */
+:root {
+    --bg-app: #0d0f13;
+    --bg-card: #1b1e25;
+    --bg-hover: #23272f;
+    --text-primary: #ecedf1;
+    --text-secondary: #9aa1ad;
+    --text-muted: #6b7280;
+    --accent: #4c8dff;
+    --accent-hover: #3b7bf0;
+    --border: rgba(255, 255, 255, 0.1);
+    --green: #2fae6a;
+    --orange: #f0a02a;
+    --red: #ff6b6b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif; }
+
+/* hidden 属性优先级兜底：display:flex 等会盖过 UA 的 [hidden]，这里强制隐藏 */
+[hidden] { display: none !important; }
+
+body {
+    background: var(--bg-app);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* ---------- 登录框 ---------- */
+.admin-login {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-app);
+    z-index: 100;
+}
+.admin-login-card {
+    width: min(360px, calc(100vw - 40px));
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.admin-login-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.admin-login-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 22px; }
+.admin-login-card input {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    background: rgba(13, 15, 19, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+.admin-login-card input:focus { outline: none; border-color: var(--accent); }
+.admin-login-card button {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.admin-login-card button:hover { background: var(--accent-hover); }
+.admin-login-err { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 18px; text-align: center; }
+
+/* ---------- 布局 ---------- */
+.admin-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 24px;
+    height: 60px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.admin-brand { font-size: 17px; font-weight: 700; white-space: nowrap; }
+.admin-tabs { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.admin-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.admin-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.admin-tab.active { color: var(--accent); background: rgba(76, 141, 255, 0.14); font-weight: 600; }
+.admin-logout {
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+}
+.admin-logout:hover { color: var(--red); border-color: var(--red); }
+
+.admin-main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.admin-panel { display: none; }
+.admin-panel.active { display: block; animation: fade 0.2s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- 数据卡片 ---------- */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+}
+.stat-card .label { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+.stat-card .value { font-size: 26px; font-weight: 700; }
+.stat-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.stat-card.hi .value { color: var(--orange); }
+
+/* ---------- 趋势图（纯 SVG） ---------- */
+.trend-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.trend-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.trend-chart { width: 100%; overflow-x: auto; }
+.trend-chart svg { display: block; }
+.trend-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--text-secondary); }
+.trend-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
+.dot-pv { background: #4c8dff; }
+.dot-uv { background: #2fae6a; }
+.dot-dl { background: #f0a02a; }
+.dot-rf { background: #c07cff; }
+
+/* ---------- 工具栏 ---------- */
+.panel-toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.panel-toolbar select, .panel-toolbar input {
+    padding: 9px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+.panel-toolbar input { flex: 1; min-width: 180px; }
+.btn-refresh {
+    padding: 9px 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-refresh:hover { background: var(--accent-hover); }
+
+/* ---------- 表格 ---------- */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 13.5px;
+}
+.admin-table th, .admin-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+.admin-table th { background: rgba(255, 255, 255, 0.03); color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+.admin-table td { color: var(--text-primary); }
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
+.badge-pending { background: rgba(240, 160, 42, 0.16); color: var(--orange); }
+.badge-paid { background: rgba(47, 174, 106, 0.16); color: var(--green); }
+.badge-rejected { background: rgba(255, 107, 107, 0.16); color: var(--red); }
+
+.act-btn {
+    padding: 5px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    margin-right: 6px;
+}
+.act-approve { background: var(--green); color: #fff; }
+.act-reject { background: var(--red); color: #fff; }
+.act-edit { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+.act-btn:hover { filter: brightness(1.1); }
+
+.empty-row { text-align: center; color: var(--text-muted); padding: 30px; }
+
+/* ---------- 配置表单 ---------- */
+.config-hint { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; }
+.config-form { display: flex; flex-direction: column; gap: 16px; }
+.config-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.config-item label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.config-item .key-name { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+.config-item input, .config-item textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(13, 15, 19, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    resize: vertical;
+}
+.config-item textarea { min-height: 72px; line-height: 1.6; }
+.config-item input:focus, .config-item textarea:focus { outline: none; border-color: var(--accent); }
+.btn-save {
+    margin-top: 20px;
+    padding: 12px 28px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-save:hover { background: var(--accent-hover); }
+.config-status { margin-top: 12px; font-size: 13px; min-height: 18px; }
+.config-status.ok { color: var(--green); }
+.config-status.err { color: var(--red); }
+
+@media (max-width: 640px) {
+    .admin-header { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 10px; }
+    .admin-main { padding: 14px; }
+    .admin-table { font-size: 12px; }
+    .admin-table th, .admin-table td { padding: 8px; }
+}

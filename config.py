@@ -33,6 +33,11 @@ DASHSCOPE_API_KEY = LLM_API_KEY
 # 每个 IP 每天最多免费体验多少次（跨自然日自动重置）
 ANONYMOUS_RATE_LIMIT_MAX = int(os.getenv("ANONYMOUS_RATE_LIMIT_MAX", "10"))
 
+# ===================== 后台管理员 =====================
+# 后台入口 /admin 的登录账号密码。密码留空则后台登录一律拒绝（防默认空密码被登入）。
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
 # ===================== tools =====================
 TOOL_LIST = []
 

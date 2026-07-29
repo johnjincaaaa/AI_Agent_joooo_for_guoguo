@@ -15,7 +15,10 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sqlOrm import User, ReferralEvent, PromoConfig, PROMO_CONFIG_DEFAULTS
+from sqlOrm import (
+    User, ReferralEvent, PromoConfig, PROMO_CONFIG_DEFAULTS,
+    PageVisit, DownloadClick, WithdrawRequest,
+)
 
 # 永久会员用一个远期日期表示（仅记录，应用当前无会员门槛）
 PERMANENT_MEMBERSHIP_DATE = datetime(2099, 12, 31)
@@ -174,3 +177,104 @@ def track_download(db: Session, ref_code: str, fingerprint: str, ip: str,
     db.commit()
     return TrackResult(ok=True, awarded=True, reason="awarded",
                        amount=reward_base, tier_awarded=tier_awarded)
+
+
+# ---------------- 埋点：访问 / 下载点击 ----------------
+def record_page_visit(db: Session, ip: str, user_agent: str, ref_code: str = "", path: str = "/chat") -> None:
+    """记录一次落地页访问（PV）。visitor_key 用 UA+IP 粗略去重算 UV。
+    埋点失败不应影响主流程，调用方需自行 try/except。"""
+    visitor_key = make_visitor_key(user_agent, ip)  # 落地时前端指纹还没生成，用 UA 兜底
+    db.add(PageVisit(
+        visitor_key=visitor_key,
+        visitor_ip=ip,
+        ref_code=(ref_code or "").strip() or None,
+        path=path,
+    ))
+    db.commit()
+
+
+def record_download_click(db: Session, ip: str, fingerprint: str, ref_code: str = "") -> None:
+    """记录一次下载按钮点击（总点击量，可重复，不去重）。"""
+    visitor_key = make_visitor_key(fingerprint, ip)
+    db.add(DownloadClick(
+        visitor_key=visitor_key,
+        visitor_ip=ip,
+        ref_code=(ref_code or "").strip() or None,
+    ))
+    db.commit()
+
+
+# ---------------- 后台统计 ----------------
+def _today_start() -> datetime:
+    now = datetime.now()
+    return datetime(now.year, now.month, now.day)
+
+
+def get_admin_stats(db: Session) -> dict:
+    """后台数据看板汇总。"""
+    from sqlalchemy import func
+
+    today = _today_start()
+
+    total_users = db.query(func.count(User.id)).scalar() or 0
+    today_users = db.query(func.count(User.id)).filter(User.register_time >= today).scalar() or 0
+
+    total_pv = db.query(func.count(PageVisit.id)).scalar() or 0
+    today_pv = db.query(func.count(PageVisit.id)).filter(PageVisit.created_at >= today).scalar() or 0
+    total_uv = db.query(func.count(func.distinct(PageVisit.visitor_key))).scalar() or 0
+    today_uv = db.query(func.count(func.distinct(PageVisit.visitor_key))).filter(
+        PageVisit.created_at >= today).scalar() or 0
+
+    total_downloads = db.query(func.count(DownloadClick.id)).scalar() or 0
+    today_downloads = db.query(func.count(DownloadClick.id)).filter(
+        DownloadClick.created_at >= today).scalar() or 0
+
+    total_referrals = db.query(func.count(ReferralEvent.id)).scalar() or 0
+    total_rewarded = db.query(func.coalesce(func.sum(ReferralEvent.reward_amount), 0.0)).scalar() or 0.0
+
+    pending_count = db.query(func.count(WithdrawRequest.id)).filter(
+        WithdrawRequest.status == "pending").scalar() or 0
+    pending_amount = db.query(func.coalesce(func.sum(WithdrawRequest.amount), 0.0)).filter(
+        WithdrawRequest.status == "pending").scalar() or 0.0
+
+    return {
+        "total_users": total_users,
+        "today_users": today_users,
+        "pv_total": total_pv,
+        "pv_today": today_pv,
+        "uv_total": total_uv,
+        "uv_today": today_uv,
+        "download_total": total_downloads,
+        "download_today": today_downloads,
+        "referral_total": total_referrals,
+        "rewarded_total": round(float(total_rewarded), 2),
+        "withdraw_pending_count": pending_count,
+        "withdraw_pending_amount": round(float(pending_amount), 2),
+        "trend": get_trend(db, days=7),
+    }
+
+
+def get_trend(db: Session, days: int = 7) -> list:
+    """近 N 天每日 PV/UV/下载/推广 趋势（含今天）。"""
+    from sqlalchemy import func
+
+    result = []
+    today = _today_start()
+    for i in range(days - 1, -1, -1):
+        day_start = today - timedelta(days=i)
+        day_end = day_start + timedelta(days=1)
+
+        def _count(model):
+            return db.query(func.count(model.id)).filter(
+                model.created_at >= day_start, model.created_at < day_end).scalar() or 0
+
+        pv = _count(PageVisit)
+        uv = db.query(func.count(func.distinct(PageVisit.visitor_key))).filter(
+            PageVisit.created_at >= day_start, PageVisit.created_at < day_end).scalar() or 0
+        dl = _count(DownloadClick)
+        rf = _count(ReferralEvent)
+        result.append({
+            "date": day_start.strftime("%m-%d"),
+            "pv": pv, "uv": uv, "download": dl, "referral": rf,
+        })
+    return result

@@ -103,6 +103,33 @@ class PromoConfig(Base):
     value = Column(Text, nullable=True)
 
 
+# ======================
+# 页面访问埋点（算 PV / UV）
+# ======================
+class PageVisit(Base):
+    __tablename__ = "page_visits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    visitor_key = Column(String(64), index=True, nullable=False)  # sha256(ua|ip)，算 UV 去重用
+    visitor_ip = Column(String(64), nullable=True)
+    ref_code = Column(String(16), nullable=True, index=True)      # 带 ?ref= 进来的推广码（区分自然/推广流量）
+    path = Column(String(120), nullable=True)                     # 访问路径，默认 /chat
+    created_at = Column(DateTime, default=datetime.now, index=True)
+
+
+# ======================
+# 下载按钮点击埋点（总点击量，可重复；与去重发奖的 ReferralEvent 不同）
+# ======================
+class DownloadClick(Base):
+    __tablename__ = "download_clicks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    visitor_key = Column(String(64), index=True, nullable=True)
+    visitor_ip = Column(String(64), nullable=True)
+    ref_code = Column(String(16), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.now, index=True)
+
+
 # 配置默认值（seed 时仅补齐缺失的 key，不覆盖已有值）
 PROMO_CONFIG_DEFAULTS = {
     # 分享弹窗介绍文案
