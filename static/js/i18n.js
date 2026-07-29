@@ -9,7 +9,7 @@
 const LANG = {
     zh: {
         // 顶部 / 通用
-        brand_name: '有料ai',
+        brand_name: 'Rove AI',
         login: '登录',
         logged_in: '已登录',
         not_logged_in: '未登录',
@@ -48,7 +48,7 @@ const LANG = {
         new_chat_title: '新建对话',
 
         // 空状态
-        empty_title: '我是有料ai，有什么可以帮你？',
+        empty_title: '我是 Rove AI，有什么可以帮你？',
         empty_desc: '输入你的问题，开启一段新的对话',
 
         // 输入区
@@ -68,7 +68,7 @@ const LANG = {
         send_title: '发送',
 
         // 登录/注册弹窗
-        modal_welcome: '欢迎使用 有料ai',
+        modal_welcome: '欢迎使用 Rove AI',
         modal_subtitle: '登录后即可保存你的对话历史',
         tab_login: '登录',
         tab_register: '注册',
@@ -220,7 +220,7 @@ const LANG = {
         job_source_default: 'BOSS直聘',
     },
     en: {
-        brand_name: 'YouLiao AI',
+        brand_name: 'Rove AI',
         login: 'Sign in',
         logged_in: 'Signed in',
         not_logged_in: 'Sign in',
@@ -253,7 +253,7 @@ const LANG = {
         fold_title: 'Collapse / expand sidebar',
         new_chat_title: 'New chat',
 
-        empty_title: "I'm YouLiao AI. How can I help?",
+        empty_title: "I'm Rove AI. How can I help?",
         empty_desc: 'Type your question to start a new conversation',
 
         input_placeholder: 'Type a message, paste an image/document, or click to attach…',
@@ -271,7 +271,7 @@ const LANG = {
         input_tip: 'Content is AI-generated. Please verify.',
         send_title: 'Send',
 
-        modal_welcome: 'Welcome to YouLiao AI',
+        modal_welcome: 'Welcome to Rove AI',
         modal_subtitle: 'Sign in to save your conversation history',
         tab_login: 'Sign in',
         tab_register: 'Register',

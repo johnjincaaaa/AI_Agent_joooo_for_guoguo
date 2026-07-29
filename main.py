@@ -34,7 +34,7 @@ except ModuleNotFoundError as e:
 
 # 初始化 FastAPI 应用
 app = FastAPI(
-    title="有料ai",
+    title="Rove AI",
     description="一个致力于取悦自我的ai应用",
     version="1.0",
 
