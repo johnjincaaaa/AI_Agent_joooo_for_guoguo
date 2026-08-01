@@ -1,3 +1,53 @@
+/* ==================== 面板切换 / 侧边栏导航（共享） ==================== */
+.chat-box.hidden {
+    display: none !important;
+}
+
+.input-area.hidden {
+    display: none !important;
+}
+
+.scroll-bottom-btn.hidden {
+    display: none !important;
+}
+
+/* 侧边栏 */
+.sidebar-section-label {
+    padding: 8px 12px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    margin: 2px 0 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.sidebar-nav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.sidebar-nav-item.active {
+    color: var(--text-primary);
+    background: var(--accent-soft);
+    font-weight: 600;
+}
+
+.sidebar-nav-item svg {
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
 /* ==================== 推广钱包 / 提现 面板 ==================== */
 .wallet-panel {
     flex: 1;

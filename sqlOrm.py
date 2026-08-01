@@ -50,18 +50,6 @@ class ChatSession(Base):
     user = relationship("User", back_populates="sessions")
 
 
-class JobProfile(Base):
-    __tablename__ = "job_profiles"
-
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    profile_data = Column(JSON, default=dict)
-    resume_content = Column(Text, nullable=True)
-    template_id = Column(String(50), default="classic")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-    user = relationship("User")
-
-
 # ======================
 # 有效推广记录表
 # ======================

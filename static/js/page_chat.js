@@ -619,12 +619,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backdrop && appShell) {
         backdrop.addEventListener('click', closeMobileDrawer);
     }
-    // 移动端点击历史会话/找工作入口后自动收起抽屉
+    // 移动端点击历史会话后自动收起抽屉
     const sideBar = document.getElementById('sideBar');
     if (sideBar) {
         sideBar.addEventListener('click', (e) => {
             if (!window.matchMedia('(max-width: 768px)').matches) return;
-            if (e.target.closest('.history.title') || e.target.closest('#jobHuntEntry')) {
+            if (e.target.closest('.history.title')) {
                 closeMobileDrawer();
             }
         });
