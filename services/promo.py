@@ -11,6 +11,7 @@ main.py 只做路由薄壳，业务规则集中在这里。
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -90,6 +91,39 @@ def build_referral_link(db: Session, code: str) -> str:
     base = cfg.get("landing_base_url") or PROMO_CONFIG_DEFAULTS["landing_base_url"]
     sep = "&" if "?" in base else "?"
     return f"{base}{sep}ref={code}"
+
+
+# 后台「生成推广链接」使用的固定落地域名（带 Meta Pixel 追踪）
+ADMIN_LANDING_BASE_URL = "https://dddd.infinityfree.io/"
+
+
+def download_counts_by_ref(db: Session, ref_codes: list) -> dict:
+    """批量统计一组推广码各自的下载点击总量（可重复计数）。
+
+    一次分组查询返回 {ref_code: count}，避免每个用户单独查库。
+    传入的空/None 推广码会被忽略。
+    """
+    from sqlalchemy import func
+
+    codes = [c for c in (ref_codes or []) if c]
+    if not codes:
+        return {}
+    rows = (
+        db.query(DownloadClick.ref_code, func.count(DownloadClick.id))
+        .filter(DownloadClick.ref_code.in_(codes))
+        .group_by(DownloadClick.ref_code)
+        .all()
+    )
+    return {code: cnt for code, cnt in rows}
+
+
+def build_admin_referral_link(code: str, pixel_id: str = "") -> str:
+    """后台为单个用户生成的推广链接：固定域名 + ?ref=码[&pixel=PixelID]。"""
+    params = [f"ref={quote(code or '', safe='')}"]
+    if pixel_id and pixel_id.strip():
+        params.append(f"pid={quote(pixel_id.strip(), safe='')}")
+    sep = "&" if "?" in ADMIN_LANDING_BASE_URL else "?"
+    return f"{ADMIN_LANDING_BASE_URL}{sep}{'&'.join(params)}"
 
 
 # ---------------- 发奖 ----------------

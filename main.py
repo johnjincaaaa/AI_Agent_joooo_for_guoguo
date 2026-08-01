@@ -717,6 +717,10 @@ class AdminBalanceAdjust(BaseModel):
     reason: str = ""
 
 
+class AdminPixelUpdate(BaseModel):
+    pixel_id: str = ""     # Meta Pixel ID，空字符串表示清除
+
+
 @app.get("/admin", summary="后台管理页", description="返回后台单页，数据靠 /admin/api/* 异步拉取")
 def admin_page(request: Request):
     return templates.TemplateResponse(name="admin.html", request=request)
@@ -750,6 +754,8 @@ def admin_users(
         query = query.filter(User.username.like(f"%{q.strip()}%"))
     total = query.count()
     rows = query.order_by(User.id.desc()).offset(offset).limit(limit).all()
+    # 按推广码批量统计下载点击总量（gtp88.top/chat?ref= 落地页埋点）
+    dl_map = promo.download_counts_by_ref(db, [u.referral_code for u in rows])
     return {
         "code": 200,
         "total": total,
@@ -759,7 +765,10 @@ def admin_users(
                 "username": u.username,
                 "balance": round(u.balance_usd or 0.0, 2),
                 "referral_count": u.referral_count or 0,
+                "download_count": dl_map.get(u.referral_code, 0) if u.referral_code else 0,
                 "referral_code": u.referral_code or "",
+                "pixel_id": u.pixel_id or "",
+                "referral_link": promo.build_admin_referral_link(u.referral_code, u.pixel_id or "") if u.referral_code else "",
                 "membership_expire_at": u.membership_expire_at.strftime("%Y-%m-%d") if u.membership_expire_at else "",
                 "register_time": u.register_time.strftime("%Y-%m-%d %H:%M") if u.register_time else "",
             }
@@ -784,6 +793,29 @@ def admin_adjust_balance(
     user.balance_usd = new_balance
     db.commit()
     return {"code": 200, "msg": "已调整", "balance": new_balance}
+
+
+@app.post("/admin/api/users/{uid}/pixel", summary="设置用户 Pixel ID 并生成推广链接")
+def admin_set_user_pixel(
+        uid: int,
+        body: AdminPixelUpdate,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    user.pixel_id = (body.pixel_id or "").strip() or None
+    # 生成链接需要推广码，若用户尚未有则现在生成
+    code = promo.get_or_create_referral_code(db, user)
+    db.commit()
+    return {
+        "code": 200,
+        "msg": "已保存",
+        "pixel_id": user.pixel_id or "",
+        "referral_code": code,
+        "referral_link": promo.build_admin_referral_link(code, user.pixel_id or ""),
+    }
 
 
 @app.get("/admin/api/withdraws", summary="提现申请列表")

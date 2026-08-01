@@ -26,6 +26,7 @@ class User(Base):
 
     # ===== 推广拉新相关 =====
     referral_code = Column(String(16), unique=True, index=True, nullable=True)  # 专属推广码（首次取链接时生成）
+    pixel_id = Column(String(64), nullable=True)                                # Meta Pixel ID（后台按用户配置，拼进推广链接）
     balance_usd = Column(Float, default=0.0, nullable=False)                    # 推广美金余额（不含待审核提现）
     referral_count = Column(Integer, default=0, nullable=False)                 # 累计有效推广人数
     membership_expire_at = Column(DateTime, nullable=True)                      # 会员到期（永久=远期日期，仅记录）
@@ -154,6 +155,7 @@ def _ensure_user_columns():
     # 列名 -> 建列 DDL（SQLite 与 MySQL 通用的简单类型）
     add_cols = {
         "referral_code": "VARCHAR(16)",
+        "pixel_id": "VARCHAR(64) NULL",
         "balance_usd": "FLOAT NOT NULL DEFAULT 0",
         "referral_count": "INTEGER NOT NULL DEFAULT 0",
         "membership_expire_at": "DATETIME NULL",

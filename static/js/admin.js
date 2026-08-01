@@ -195,16 +195,33 @@
             const d = await res.json();
             const tb = document.getElementById("userTbody");
             if (!d.users.length) {
-                tb.innerHTML = `<tr><td colspan="8" class="empty-row">无用户</td></tr>`;
+                tb.innerHTML = `<tr><td colspan="11" class="empty-row">无用户</td></tr>`;
                 return;
             }
-            tb.innerHTML = d.users.map(u => `<tr>
+            tb.innerHTML = d.users.map(u => {
+                const link = u.referral_link || "";
+                const linkCell = link
+                    ? `<a class="user-link" href="${esc(link)}" target="_blank" rel="noopener" title="${esc(link)}">${esc(link)}</a>`
+                    : "—";
+                const copyBtn = link
+                    ? `<button class="act-btn act-copy" data-copy="${esc(link)}">复制链接</button>`
+                    : "";
+                return `<tr>
                 <td>${u.id}</td><td>${esc(u.username)}</td>
                 <td>$${u.balance}</td><td>${u.referral_count}</td>
-                <td>${esc(u.referral_code || "—")}</td><td>${esc(u.membership_expire_at || "—")}</td>
+                <td>${u.download_count != null ? u.download_count : 0}</td>
+                <td>${esc(u.referral_code || "—")}</td>
+                <td>${esc(u.pixel_id || "—")}</td>
+                <td class="user-link-cell">${linkCell}</td>
+                <td>${esc(u.membership_expire_at || "—")}</td>
                 <td>${esc(u.register_time)}</td>
-                <td><button class="act-btn act-edit" data-adjust="${u.id}" data-name="${esc(u.username)}" data-bal="${u.balance}">调整余额</button></td>
-            </tr>`).join("");
+                <td>
+                    <button class="act-btn act-edit" data-adjust="${u.id}" data-name="${esc(u.username)}" data-bal="${u.balance}">调整余额</button>
+                    <button class="act-btn act-pixel" data-pixel="${u.id}" data-name="${esc(u.username)}" data-pixelval="${esc(u.pixel_id || "")}">设置Pixel</button>
+                    ${copyBtn}
+                </td>
+            </tr>`;
+            }).join("");
         } catch (e) { /* 401 */ }
     }
 
@@ -222,6 +239,42 @@
             if (res.ok) { alert(`已调整，新余额 $${d.balance}`); loadUsers(); }
             else alert((d.detail && d.detail.msg) || "调整失败");
         } catch (e) { /* 401 */ }
+    }
+
+    async function setPixel(uid, username, curPixel) {
+        const input = prompt(`为用户「${username}」设置 Meta Pixel ID\n（留空并确定可清除；保存后自动生成/更新推广链接）：`, curPixel || "");
+        if (input === null) return;
+        try {
+            const res = await api(`/admin/api/users/${uid}/pixel`, {
+                method: "POST",
+                body: JSON.stringify({pixel_id: input.trim()}),
+            });
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) {
+                alert(`已保存\n推广链接：\n${d.referral_link || "—"}`);
+                loadUsers();
+            } else {
+                alert((d.detail && d.detail.msg) || "保存失败");
+            }
+        } catch (e) { /* 401 */ }
+    }
+
+    async function copyLink(link) {
+        try {
+            await navigator.clipboard.writeText(link);
+            alert("已复制推广链接");
+        } catch (e) {
+            // 兜底：clipboard 不可用（非 https / 旧浏览器）时用临时输入框
+            const ta = document.createElement("textarea");
+            ta.value = link;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); alert("已复制推广链接"); }
+            catch (_) { prompt("请手动复制链接：", link); }
+            document.body.removeChild(ta);
+        }
     }
 
     // ---------------- 配置管理 ----------------
@@ -298,8 +351,12 @@
             if (rj) handleWithdrawAction(rj, "reject");
         });
         document.getElementById("userTbody").addEventListener("click", e => {
-            const uid = e.target.getAttribute("data-adjust");
-            if (uid) adjustBalance(uid, e.target.getAttribute("data-name"), e.target.getAttribute("data-bal"));
+            const adjustId = e.target.getAttribute("data-adjust");
+            if (adjustId) { adjustBalance(adjustId, e.target.getAttribute("data-name"), e.target.getAttribute("data-bal")); return; }
+            const pixelId = e.target.getAttribute("data-pixel");
+            if (pixelId) { setPixel(pixelId, e.target.getAttribute("data-name"), e.target.getAttribute("data-pixelval")); return; }
+            const copyVal = e.target.getAttribute("data-copy");
+            if (copyVal) { copyLink(copyVal); }
         });
 
         // 有 token 直接进后台，否则登录

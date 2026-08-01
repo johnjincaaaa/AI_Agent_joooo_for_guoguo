@@ -202,7 +202,23 @@ body {
 .act-approve { background: var(--green); color: #fff; }
 .act-reject { background: var(--red); color: #fff; }
 .act-edit { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+.act-pixel { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+.act-copy { background: rgba(76, 141, 255, 0.16); color: #4c8dff; border: 1px solid rgba(76, 141, 255, 0.35); }
 .act-btn:hover { filter: brightness(1.1); }
+
+/* 推广链接列：限宽 + 省略号，避免撑破表格 */
+.user-link-cell { max-width: 240px; }
+.user-link {
+    display: inline-block;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+    color: #4c8dff;
+    text-decoration: none;
+}
+.user-link:hover { text-decoration: underline; }
 
 .empty-row { text-align: center; color: var(--text-muted); padding: 30px; }
 
