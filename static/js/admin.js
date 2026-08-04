@@ -109,6 +109,9 @@
             statCard("累计发放美金", "$" + d.rewarded_total, "", true),
             statCard("注册用户", d.total_users, "今日 +" + d.today_users),
             statCard("待审核提现", d.withdraw_pending_count + " 笔", "$" + d.withdraw_pending_amount, true),
+            statCard("落地页访问", d.landing_pv, "今日 +" + (d.landing_pv_today || 0) + " · UV " + (d.landing_uv || 0)),
+            statCard("落地页点击", d.landing_click_total, "今日 +" + (d.landing_click_today || 0)),
+            statCard("落地页下载(去重)", d.landing_download_uv, "独立访客", true),
         ].join("");
     }
 
@@ -195,7 +198,7 @@
             const d = await res.json();
             const tb = document.getElementById("userTbody");
             if (!d.users.length) {
-                tb.innerHTML = `<tr><td colspan="11" class="empty-row">无用户</td></tr>`;
+                tb.innerHTML = `<tr><td colspan="14" class="empty-row">无用户</td></tr>`;
                 return;
             }
             tb.innerHTML = d.users.map(u => {
@@ -206,10 +209,15 @@
                 const copyBtn = link
                     ? `<button class="act-btn act-copy" data-copy="${esc(link)}">复制链接</button>`
                     : "";
+                const fbVal = (u.fb_download_count != null) ? u.fb_download_count : "";
+                const fbCell = (u.fb_download_count != null) ? u.fb_download_count : "—";
                 return `<tr>
                 <td>${u.id}</td><td>${esc(u.username)}</td>
                 <td>$${u.balance}</td><td>${u.referral_count}</td>
+                <td>${u.visit_count != null ? u.visit_count : 0}</td>
+                <td>${u.click_count != null ? u.click_count : 0}</td>
                 <td>${u.download_count != null ? u.download_count : 0}</td>
+                <td>${fbCell}</td>
                 <td>${esc(u.referral_code || "—")}</td>
                 <td>${esc(u.pixel_id || "—")}</td>
                 <td class="user-link-cell">${linkCell}</td>
@@ -218,6 +226,7 @@
                 <td>
                     <button class="act-btn act-edit" data-adjust="${u.id}" data-name="${esc(u.username)}" data-bal="${u.balance}">调整余额</button>
                     <button class="act-btn act-pixel" data-pixel="${u.id}" data-name="${esc(u.username)}" data-pixelval="${esc(u.pixel_id || "")}">设置Pixel</button>
+                    <button class="act-btn act-fb" data-fb="${u.id}" data-name="${esc(u.username)}" data-fbval="${fbVal}">填FB数</button>
                     ${copyBtn}
                 </td>
             </tr>`;
@@ -259,6 +268,32 @@
         } catch (e) { /* 401 */ }
     }
 
+    async function setFbDownload(uid, username, curVal) {
+        const input = prompt(`为用户「${username}」手动填写 Facebook 下载量\n（用于与本站统计下载数对比；留空并确定可清除）：`, curVal || "");
+        if (input === null) return;
+        const trimmed = input.trim();
+        let payload;
+        if (trimmed === "") {
+            payload = {count: null};
+        } else {
+            const n = parseInt(trimmed, 10);
+            if (isNaN(n) || n < 0 || String(n) !== trimmed) {
+                alert("请输入非负整数，或留空清除");
+                return;
+            }
+            payload = {count: n};
+        }
+        try {
+            const res = await api(`/admin/api/users/${uid}/fb-download`, {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) { loadUsers(); }
+            else alert((d.detail && d.detail.msg) || "保存失败");
+        } catch (e) { /* 401 */ }
+    }
+
     async function copyLink(link) {
         try {
             await navigator.clipboard.writeText(link);
@@ -275,6 +310,136 @@
             catch (_) { prompt("请手动复制链接：", link); }
             document.body.removeChild(ta);
         }
+    }
+
+    // ---------------- 像素凭证 ----------------
+    let pixelCache = [];  // 供分发链接下拉复用
+
+    async function loadPixels() {
+        try {
+            const res = await api("/admin/api/pixels");
+            const d = await res.json();
+            pixelCache = d.pixels || [];
+            const tb = document.getElementById("pixelTbody");
+            if (!pixelCache.length) {
+                tb.innerHTML = `<tr><td colspan="8" class="empty-row">暂无像素凭证，点上方「新增」</td></tr>`;
+                return;
+            }
+            tb.innerHTML = pixelCache.map(p => `<tr>
+                <td>${p.id}</td>
+                <td>${esc(p.name)}</td>
+                <td>${esc(p.pixel_id)}</td>
+                <td class="token-cell" title="${esc(p.capi_token)}">${esc(p.capi_token)}</td>
+                <td>${esc(p.event_name)}</td>
+                <td>${esc(p.test_event_code || "—")}</td>
+                <td>${p.enabled ? "启用" : "停用"}</td>
+                <td>
+                    <button class="act-btn act-edit" data-pedit="${p.id}">编辑</button>
+                    <button class="act-btn act-reject" data-pdel="${p.id}">删除</button>
+                </td>
+            </tr>`).join("");
+        } catch (e) { /* 401 */ }
+    }
+
+    async function pixelForm(existing) {
+        const name = prompt("备注名（如「A广告商」）：", existing ? existing.name : "");
+        if (name === null) return;
+        const pixel_id = prompt("Pixel ID：", existing ? existing.pixel_id : "");
+        if (pixel_id === null) return;
+        const capi_token = prompt(existing ? "CAPI Token（留空则不修改）：" : "CAPI Token：", existing ? "" : "");
+        if (capi_token === null) return;
+        const event_name = prompt("下载转化事件名：", existing ? existing.event_name : "CompleteRegistration");
+        if (event_name === null) return;
+        const test_event_code = prompt("测试事件码（可选，调试用，留空即可）：", existing ? (existing.test_event_code || "") : "");
+        if (test_event_code === null) return;
+        const body = {
+            name: name.trim(), pixel_id: pixel_id.trim(), capi_token: capi_token.trim(),
+            event_name: event_name.trim() || "CompleteRegistration",
+            test_event_code: test_event_code.trim(), enabled: 1,
+        };
+        const path = existing ? `/admin/api/pixels/${existing.id}` : "/admin/api/pixels";
+        try {
+            const res = await api(path, {method: "POST", body: JSON.stringify(body)});
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) { loadPixels(); }
+            else alert((d.detail && d.detail.msg) || "保存失败");
+        } catch (e) { /* 401 */ }
+    }
+
+    async function deletePixel(id) {
+        if (!confirm(`确认删除像素凭证 #${id}？`)) return;
+        try {
+            const res = await api(`/admin/api/pixels/${id}/delete`, {method: "POST"});
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) { loadPixels(); }
+            else alert((d.detail && d.detail.msg) || "删除失败");
+        } catch (e) { /* 401 */ }
+    }
+
+    // ---------------- 分发链接 ----------------
+    let currentLinks = [];  // 供编辑时取原值
+
+    async function loadLinks() {
+        try {
+            // 确保像素缓存已加载（下拉/新增用）
+            if (!pixelCache.length) { await loadPixels(); }
+            const res = await api("/admin/api/links");
+            const d = await res.json();
+            const links = d.links || [];
+            currentLinks = links;
+            const tb = document.getElementById("linkTbody");
+            if (!links.length) {
+                tb.innerHTML = `<tr><td colspan="9" class="empty-row">暂无分发链接，点上方「新增」</td></tr>`;
+                return;
+            }
+            tb.innerHTML = links.map(l => `<tr>
+                <td>${l.id}</td>
+                <td>${esc(l.name)}</td>
+                <td class="user-link-cell"><a class="user-link" href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.url)}">${esc(l.url)}</a></td>
+                <td>${esc(l.credential_name)}<br><span class="key-name">${esc(l.pixel_id)}</span></td>
+                <td>${l.visit}</td><td>${l.click}</td><td>${l.download}</td>
+                <td>${l.enabled ? "启用" : "停用"}</td>
+                <td>
+                    <button class="act-btn act-copy" data-copy="${esc(l.url)}">复制</button>
+                    <button class="act-btn act-edit" data-ledit="${l.id}">编辑</button>
+                    <button class="act-btn act-reject" data-ldel="${l.id}">删除</button>
+                </td>
+            </tr>`).join("");
+        } catch (e) { /* 401 */ }
+    }
+
+    function pixelOptionsText() {
+        return pixelCache.map(p => `${p.id}=${p.name}(${p.pixel_id})`).join("\n");
+    }
+
+    async function linkForm(existing) {
+        if (!pixelCache.length) { await loadPixels(); }
+        if (!pixelCache.length) { alert("请先在「像素凭证」里新增至少一组凭证"); return; }
+        const name = prompt("链接备注名（如「A广告商-TikTok」）：", existing ? existing.name : "");
+        if (name === null) return;
+        const credDefault = existing ? existing.credential_id : (pixelCache[0] && pixelCache[0].id);
+        const credInput = prompt("绑定哪组像素凭证？填 ID：\n" + pixelOptionsText(), String(credDefault || ""));
+        if (credInput === null) return;
+        const credential_id = parseInt(credInput.trim(), 10);
+        if (isNaN(credential_id)) { alert("请输入有效的凭证 ID"); return; }
+        const body = {name: name.trim(), credential_id: credential_id, enabled: 1};
+        const path = existing ? `/admin/api/links/${existing.id}` : "/admin/api/links";
+        try {
+            const res = await api(path, {method: "POST", body: JSON.stringify(body)});
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) { loadLinks(); }
+            else alert((d.detail && d.detail.msg) || "保存失败");
+        } catch (e) { /* 401 */ }
+    }
+
+    async function deleteLink(id) {
+        if (!confirm(`确认删除分发链接 #${id}？`)) return;
+        try {
+            const res = await api(`/admin/api/links/${id}/delete`, {method: "POST"});
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) { loadLinks(); }
+            else alert((d.detail && d.detail.msg) || "删除失败");
+        } catch (e) { /* 401 */ }
     }
 
     // ---------------- 配置管理 ----------------
@@ -325,6 +490,8 @@
         if (tab === "dashboard") loadDashboard();
         else if (tab === "withdraws") loadWithdraws();
         else if (tab === "users") loadUsers();
+        else if (tab === "pixels") loadPixels();
+        else if (tab === "links") loadLinks();
         else if (tab === "config") loadConfig();
     }
 
@@ -355,8 +522,32 @@
             if (adjustId) { adjustBalance(adjustId, e.target.getAttribute("data-name"), e.target.getAttribute("data-bal")); return; }
             const pixelId = e.target.getAttribute("data-pixel");
             if (pixelId) { setPixel(pixelId, e.target.getAttribute("data-name"), e.target.getAttribute("data-pixelval")); return; }
+            const fbId = e.target.getAttribute("data-fb");
+            if (fbId) { setFbDownload(fbId, e.target.getAttribute("data-name"), e.target.getAttribute("data-fbval")); return; }
             const copyVal = e.target.getAttribute("data-copy");
             if (copyVal) { copyLink(copyVal); }
+        });
+
+        // 像素凭证
+        document.getElementById("pixelNewBtn").addEventListener("click", () => pixelForm(null));
+        document.getElementById("pixelRefresh").addEventListener("click", loadPixels);
+        document.getElementById("pixelTbody").addEventListener("click", e => {
+            const ed = e.target.getAttribute("data-pedit");
+            if (ed) { pixelForm(pixelCache.find(p => String(p.id) === ed)); return; }
+            const dl = e.target.getAttribute("data-pdel");
+            if (dl) { deletePixel(dl); }
+        });
+
+        // 分发链接
+        document.getElementById("linkNewBtn").addEventListener("click", () => linkForm(null));
+        document.getElementById("linkRefresh").addEventListener("click", loadLinks);
+        document.getElementById("linkTbody").addEventListener("click", e => {
+            const cp = e.target.getAttribute("data-copy");
+            if (cp) { copyLink(cp); return; }
+            const ed = e.target.getAttribute("data-ledit");
+            if (ed) { linkForm(currentLinks.find(l => String(l.id) === ed)); return; }
+            const dl = e.target.getAttribute("data-ldel");
+            if (dl) { deleteLink(dl); }
         });
 
         // 有 token 直接进后台，否则登录

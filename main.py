@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, Query, status, Upl
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 import json
 from pydantic import BaseModel
 from typing import List, Optional
@@ -24,6 +24,7 @@ from token_utils import (
 from password_utils import hash_password, verify_password, needs_rehash
 from rate_limit import check_anonymous_rate_limit, get_anonymous_remaining
 from services import promo
+from services import capi
 # 提前引入 ORM（get_db 等），供靠前定义的路由用作默认参数（默认值在定义时求值）
 from sqlOrm import *
 import tools
@@ -70,10 +71,13 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_DOCUMENT_SIZE = 20 * 1024 * 1024  # 20MB
 
 # 允许跨域（让你的 HTML 页面可以调用）
+# 注意：allow_origins=["*"] 与 allow_credentials=True 是浏览器禁止的组合
+# （带 credentials 时不允许通配符 origin）。落地页埋点是公开接口、不需要 cookie，
+# 故关闭 credentials，让通配符正常生效，保证 infinityfree 等跨域站点能调通。
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -86,6 +90,9 @@ app.add_middleware(
          description="启动入口，返回html")
 def chat_page(request: Request, db: Session = Depends(get_db)):
     # 访问埋点（PV/UV）——失败绝不影响页面返回
+    # 若带 _v=1，说明是 /go/{slug} 的 chat 类型重定向而来，访问已在 /go 记过，这里不重复记
+    if request.query_params.get("_v") == "1":
+        return templates.TemplateResponse(name="ai.html", request=request)
     try:
         promo.record_page_visit(
             db,
@@ -586,6 +593,13 @@ def ai_history(
 class TrackDownloadRequest(BaseModel):
     ref: str = ""
     fingerprint: str = ""
+    slug: str = ""          # 分发链接短码（多像素分发系统），带上则触发对应像素 CAPI 回传
+    event_id: str = ""      # 前端 fbq 用的事件 ID，服务端 CAPI 带同一个供 Meta 去重
+
+
+class TrackVisitRequest(BaseModel):
+    ref: str = ""
+    fingerprint: str = ""
 
 
 class WithdrawSubmitRequest(BaseModel):
@@ -619,6 +633,60 @@ def promo_my_link(
     return {"code": 200, "referral_code": code, "link": promo.build_referral_link(db, code)}
 
 
+@app.post("/ai/promo/track-visit", summary="记录落地页访问（公开）")
+def promo_track_visit(
+        request: TrackVisitRequest,
+        http_request: Request,
+        db: Session = Depends(get_db),
+):
+    """独立静态落地页加载时调用，记 PV/UV。埋点失败不影响返回。"""
+    try:
+        promo.record_page_visit(
+            db,
+            ip=promo.client_ip(http_request),
+            user_agent=http_request.headers.get("user-agent", ""),
+            ref_code=(request.ref or "").strip(),
+            path="landing",
+        )
+    except Exception as e:
+        logger.warning(f"[埋点] 落地页访问记录失败：{e}")
+    return {"code": 200}
+
+
+@app.get("/go/{slug}", summary="分发链接入口（多像素）")
+def distribution_landing(slug: str, request: Request, db: Session = Depends(get_db)):
+    """访客入口：按 slug 记访问 + 用绑定像素 CAPI 回传 PageView → 跳转 AI 主页。"""
+    link = db.query(DistributionLink).filter(
+        DistributionLink.slug == slug, DistributionLink.enabled == 1).first()
+    if not link or not link.credential or link.credential.enabled != 1:
+        # 无效/停用链接：直接进主页，不做埋点
+        return RedirectResponse(url="/chat", status_code=302)
+
+    cred = link.credential
+    ip = promo.client_ip(request)
+    ua = request.headers.get("user-agent", "")
+    event_id = uuid.uuid4().hex
+
+    # 访问埋点（按 slug 隔离）
+    try:
+        promo.record_page_visit(db, ip=ip, user_agent=ua, path="landing", link_slug=slug)
+    except Exception as e:
+        logger.warning(f"[埋点] 分发页访问记录失败 slug={slug}：{e}")
+
+    # 服务端 CAPI 回传 PageView（用该链接绑定的像素凭证）
+    try:
+        capi.send_event(
+            pixel_id=cred.pixel_id, token=cred.capi_token, event_name="PageView",
+            event_id=event_id, client_ip=ip, user_agent=ua,
+            event_source_url=str(request.url), test_event_code=cred.test_event_code or "",
+        )
+    except Exception as e:
+        logger.warning(f"[CAPI] 分发页 PageView 回传失败 slug={slug}：{e}")
+
+    # 统一跳转 AI 主页（带 slug 标记来源，_v=1 表示已埋点/回传，避免重复）
+    return RedirectResponse(url=f"/chat?slug={slug}&_v=1", status_code=302)
+
+
 @app.post("/ai/promo/track-download", summary="记录下载控件点击并给推广人发奖（公开）")
 def promo_track_download(
         request: TrackDownloadRequest,
@@ -629,12 +697,33 @@ def promo_track_download(
     ip = promo.client_ip(http_request)
     ref = (request.ref or "").strip()
     fingerprint = (request.fingerprint or "").strip()
+    slug = (request.slug or "").strip()
 
     # 点击埋点（总点击量，可重复）——失败不影响发奖主流程
     try:
-        promo.record_download_click(db, ip=ip, fingerprint=fingerprint, ref_code=ref)
+        promo.record_download_click(db, ip=ip, fingerprint=fingerprint, ref_code=ref, link_slug=slug)
     except Exception as e:
         logger.warning(f"[埋点] 下载点击记录失败：{e}")
+
+    # 多像素分发：带 slug 时，用该链接绑定的像素凭证服务端 CAPI 回传转化事件
+    if slug:
+        try:
+            link = db.query(DistributionLink).filter(
+                DistributionLink.slug == slug, DistributionLink.enabled == 1).first()
+            if link and link.credential and link.credential.enabled == 1:
+                cred = link.credential
+                capi.send_event(
+                    pixel_id=cred.pixel_id,
+                    token=cred.capi_token,
+                    event_name=cred.event_name or "CompleteRegistration",
+                    event_id=(request.event_id or "").strip(),
+                    client_ip=ip,
+                    user_agent=http_request.headers.get("user-agent", ""),
+                    event_source_url=str(http_request.headers.get("referer", "")),
+                    test_event_code=cred.test_event_code or "",
+                )
+        except Exception as e:
+            logger.warning(f"[CAPI] 下载转化回传失败 slug={slug}：{e}")
 
     result = promo.track_download(
         db,
@@ -721,6 +810,25 @@ class AdminPixelUpdate(BaseModel):
     pixel_id: str = ""     # Meta Pixel ID，空字符串表示清除
 
 
+class AdminFbDownloadUpdate(BaseModel):
+    count: Optional[int] = None   # Facebook 下载量，None 表示清除（未填写）
+
+
+class PixelCredentialForm(BaseModel):
+    name: str = ""
+    pixel_id: str = ""
+    capi_token: str = ""
+    event_name: str = "CompleteRegistration"
+    test_event_code: str = ""
+    enabled: int = 1
+
+
+class DistributionLinkForm(BaseModel):
+    name: str = ""
+    credential_id: int = 0
+    enabled: int = 1
+
+
 @app.get("/admin", summary="后台管理页", description="返回后台单页，数据靠 /admin/api/* 异步拉取")
 def admin_page(request: Request):
     return templates.TemplateResponse(name="admin.html", request=request)
@@ -754,8 +862,11 @@ def admin_users(
         query = query.filter(User.username.like(f"%{q.strip()}%"))
     total = query.count()
     rows = query.order_by(User.id.desc()).offset(offset).limit(limit).all()
-    # 按推广码批量统计下载点击总量（gtp88.top/chat?ref= 落地页埋点）
-    dl_map = promo.download_counts_by_ref(db, [u.referral_code for u in rows])
+    # 按推广码批量统计每个链接的访问量 / 点击量 / 去重下载量（落地页 ?ref= 埋点）
+    codes = [u.referral_code for u in rows]
+    visit_map = promo.visit_counts_by_ref(db, codes)        # 访问量 PV
+    click_map = promo.download_counts_by_ref(db, codes)     # 点击量（下载按钮点击总数）
+    dluv_map = promo.download_uv_by_ref(db, codes)          # 下载量（去重访客）
     return {
         "code": 200,
         "total": total,
@@ -765,7 +876,10 @@ def admin_users(
                 "username": u.username,
                 "balance": round(u.balance_usd or 0.0, 2),
                 "referral_count": u.referral_count or 0,
-                "download_count": dl_map.get(u.referral_code, 0) if u.referral_code else 0,
+                "visit_count": visit_map.get(u.referral_code, 0) if u.referral_code else 0,
+                "click_count": click_map.get(u.referral_code, 0) if u.referral_code else 0,
+                "download_count": dluv_map.get(u.referral_code, 0) if u.referral_code else 0,
+                "fb_download_count": u.fb_download_count if u.fb_download_count is not None else None,
                 "referral_code": u.referral_code or "",
                 "pixel_id": u.pixel_id or "",
                 "referral_link": promo.build_admin_referral_link(u.referral_code, u.pixel_id or "") if u.referral_code else "",
@@ -816,6 +930,27 @@ def admin_set_user_pixel(
         "referral_code": code,
         "referral_link": promo.build_admin_referral_link(code, user.pixel_id or ""),
     }
+
+
+@app.post("/admin/api/users/{uid}/fb-download", summary="手动填写用户 Facebook 下载量")
+def admin_set_fb_download(
+        uid: int,
+        body: AdminFbDownloadUpdate,
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    # 空 → 清除（回落到"未填写"）；否则必须是非负整数
+    if body.count is None:
+        user.fb_download_count = None
+    elif body.count < 0:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "下载量不能为负数"})
+    else:
+        user.fb_download_count = int(body.count)
+    db.commit()
+    return {"code": 200, "msg": "已保存", "fb_download_count": user.fb_download_count}
 
 
 @app.get("/admin/api/withdraws", summary="提现申请列表")
@@ -910,6 +1045,150 @@ def admin_set_config(
         updated.append(key)
     db.commit()
     return {"code": 200, "msg": "已保存", "updated": updated}
+
+
+# ==================== 多像素分发系统：像素凭证 ====================
+
+def _pixel_to_dict(c):
+    return {
+        "id": c.id, "name": c.name, "pixel_id": c.pixel_id,
+        "capi_token": c.capi_token,   # 按需求：完整显示 token
+        "event_name": c.event_name or "CompleteRegistration",
+        "test_event_code": c.test_event_code or "",
+        "enabled": c.enabled,
+        "created_at": c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+    }
+
+
+@app.get("/admin/api/pixels", summary="像素凭证列表")
+def admin_pixels(db: Session = Depends(get_db), _: bool = Depends(verify_admin_token)):
+    rows = db.query(PixelCredential).order_by(PixelCredential.id.desc()).all()
+    return {"code": 200, "pixels": [_pixel_to_dict(c) for c in rows]}
+
+
+@app.post("/admin/api/pixels", summary="新增像素凭证")
+def admin_create_pixel(body: PixelCredentialForm, db: Session = Depends(get_db),
+                       _: bool = Depends(verify_admin_token)):
+    if not body.pixel_id.strip() or not body.capi_token.strip():
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "Pixel ID 和 CAPI Token 必填"})
+    c = PixelCredential(
+        name=body.name.strip() or body.pixel_id.strip(),
+        pixel_id=body.pixel_id.strip(),
+        capi_token=body.capi_token.strip(),
+        event_name=body.event_name.strip() or "CompleteRegistration",
+        test_event_code=body.test_event_code.strip() or None,
+        enabled=1 if body.enabled else 0,
+    )
+    db.add(c)
+    db.commit()
+    return {"code": 200, "msg": "已新增", "id": c.id}
+
+
+@app.post("/admin/api/pixels/{cid}", summary="编辑像素凭证")
+def admin_update_pixel(cid: int, body: PixelCredentialForm, db: Session = Depends(get_db),
+                       _: bool = Depends(verify_admin_token)):
+    c = db.query(PixelCredential).filter(PixelCredential.id == cid).first()
+    if not c:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "凭证不存在"})
+    if body.name.strip():
+        c.name = body.name.strip()
+    if body.pixel_id.strip():
+        c.pixel_id = body.pixel_id.strip()
+    if body.capi_token.strip():        # 留空则不改 token
+        c.capi_token = body.capi_token.strip()
+    c.event_name = body.event_name.strip() or "CompleteRegistration"
+    c.test_event_code = body.test_event_code.strip() or None
+    c.enabled = 1 if body.enabled else 0
+    db.commit()
+    return {"code": 200, "msg": "已保存"}
+
+
+@app.post("/admin/api/pixels/{cid}/delete", summary="删除像素凭证")
+def admin_delete_pixel(cid: int, db: Session = Depends(get_db),
+                       _: bool = Depends(verify_admin_token)):
+    used = db.query(DistributionLink.id).filter(DistributionLink.credential_id == cid).first()
+    if used:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "该凭证已被分发链接绑定，请先解绑或删除对应链接"})
+    c = db.query(PixelCredential).filter(PixelCredential.id == cid).first()
+    if not c:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "凭证不存在"})
+    db.delete(c)
+    db.commit()
+    return {"code": 200, "msg": "已删除"}
+
+
+# ==================== 多像素分发系统：分发链接 ====================
+
+@app.get("/admin/api/links", summary="分发链接列表")
+def admin_links(request: Request, db: Session = Depends(get_db),
+                _: bool = Depends(verify_admin_token)):
+    rows = db.query(DistributionLink).order_by(DistributionLink.id.desc()).all()
+    stats = promo.link_stats_by_slug(db, [r.slug for r in rows])
+    base = str(request.base_url).rstrip("/")
+    cred_map = {c.id: c for c in db.query(PixelCredential).all()}
+    out = []
+    for r in rows:
+        c = cred_map.get(r.credential_id)
+        st = stats.get(r.slug, {"visit": 0, "click": 0, "download": 0})
+        out.append({
+            "id": r.id, "slug": r.slug, "name": r.name,
+            "url": f"{base}/go/{r.slug}",
+            "credential_id": r.credential_id,
+            "credential_name": c.name if c else "（凭证已删）",
+            "pixel_id": c.pixel_id if c else "",
+            "enabled": r.enabled,
+            "visit": st["visit"], "click": st["click"], "download": st["download"],
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+        })
+    return {"code": 200, "links": out}
+
+
+@app.post("/admin/api/links", summary="新增分发链接")
+def admin_create_link(body: DistributionLinkForm, db: Session = Depends(get_db),
+                      _: bool = Depends(verify_admin_token)):
+    cred = db.query(PixelCredential).filter(PixelCredential.id == body.credential_id).first()
+    if not cred:
+        raise HTTPException(status_code=400, detail={"code": 400, "msg": "请选择有效的像素凭证"})
+    link = DistributionLink(
+        slug=promo.generate_slug(db),
+        name=body.name.strip() or cred.name,
+        download_url="-",          # 分发链接统一进 AI 主页，无需下载地址（列非空，占位）
+        credential_id=cred.id,
+        landing_type="chat",       # 统一 AI 主页
+        enabled=1 if body.enabled else 0,
+    )
+    db.add(link)
+    db.commit()
+    return {"code": 200, "msg": "已新增", "id": link.id, "slug": link.slug}
+
+
+@app.post("/admin/api/links/{lid}", summary="编辑分发链接")
+def admin_update_link(lid: int, body: DistributionLinkForm, db: Session = Depends(get_db),
+                      _: bool = Depends(verify_admin_token)):
+    link = db.query(DistributionLink).filter(DistributionLink.id == lid).first()
+    if not link:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "链接不存在"})
+    if body.name.strip():
+        link.name = body.name.strip()
+    if body.credential_id:
+        cred = db.query(PixelCredential).filter(PixelCredential.id == body.credential_id).first()
+        if not cred:
+            raise HTTPException(status_code=400, detail={"code": 400, "msg": "请选择有效的像素凭证"})
+        link.credential_id = cred.id
+    link.enabled = 1 if body.enabled else 0
+    db.commit()
+    return {"code": 200, "msg": "已保存"}
+
+
+@app.post("/admin/api/links/{lid}/delete", summary="删除分发链接")
+def admin_delete_link(lid: int, db: Session = Depends(get_db),
+                      _: bool = Depends(verify_admin_token)):
+    link = db.query(DistributionLink).filter(DistributionLink.id == lid).first()
+    if not link:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "链接不存在"})
+    db.delete(link)
+    db.commit()
+    return {"code": 200, "msg": "已删除"}
 
 
 # ------------------- 接口：登录 ------------------

@@ -203,8 +203,20 @@ body {
 .act-reject { background: var(--red); color: #fff; }
 .act-edit { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
 .act-pixel { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+.act-fb { background: rgba(24, 119, 242, 0.16); color: #4a9eff; border: 1px solid rgba(24, 119, 242, 0.35); }
 .act-copy { background: rgba(76, 141, 255, 0.16); color: #4c8dff; border: 1px solid rgba(76, 141, 255, 0.35); }
 .act-btn:hover { filter: brightness(1.1); }
+
+/* CAPI Token 列：限宽 + 省略号，鼠标悬停看全量 */
+.token-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
 
 /* 推广链接列：限宽 + 省略号，避免撑破表格 */
 .user-link-cell { max-width: 240px; }

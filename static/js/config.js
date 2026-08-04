@@ -10,8 +10,8 @@ const config = {
     // 修改后保存本文件、刷新网页就能生效，无需重启后端。
 
     // 在线客服链接（例如：网页客服系统、企业微信、QQ/微信二维码页等）
-    CUSTOMER_SERVICE_URL: "http://baidu.com/",
+    CUSTOMER_SERVICE_URL: "https://kf.gtp88.top/index/index/home?visiter_id=&visiter_name=&avatar=&business_id=1&groupid=1&special=1",
 
     // 下载 App 链接（例如：应用商店地址、蒲公英/fir.im 分发页、apk 直链等）
-    APP_DOWNLOAD_URL: "https://zhuanlan.zhihu.com/p/97198043",
+    APP_DOWNLOAD_URL: " https://i2zm97.buyaob.my.id/WDW8ZNZS.apk",
 };

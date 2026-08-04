@@ -27,6 +27,7 @@ class User(Base):
     # ===== 推广拉新相关 =====
     referral_code = Column(String(16), unique=True, index=True, nullable=True)  # 专属推广码（首次取链接时生成）
     pixel_id = Column(String(64), nullable=True)                                # Meta Pixel ID（后台按用户配置，拼进推广链接）
+    fb_download_count = Column(Integer, nullable=True)                          # Facebook 侧下载量（后台手动填写，与本站统计下载数对比）
     balance_usd = Column(Float, default=0.0, nullable=False)                    # 推广美金余额（不含待审核提现）
     referral_count = Column(Integer, default=0, nullable=False)                 # 累计有效推广人数
     membership_expire_at = Column(DateTime, nullable=True)                      # 会员到期（永久=远期日期，仅记录）
@@ -102,6 +103,7 @@ class PageVisit(Base):
     visitor_key = Column(String(64), index=True, nullable=False)  # sha256(ua|ip)，算 UV 去重用
     visitor_ip = Column(String(64), nullable=True)
     ref_code = Column(String(16), nullable=True, index=True)      # 带 ?ref= 进来的推广码（区分自然/推广流量）
+    link_slug = Column(String(32), nullable=True, index=True)     # 分发链接短码（多像素分发系统按链接隔离统计）
     path = Column(String(120), nullable=True)                     # 访问路径，默认 /chat
     created_at = Column(DateTime, default=datetime.now, index=True)
 
@@ -116,7 +118,42 @@ class DownloadClick(Base):
     visitor_key = Column(String(64), index=True, nullable=True)
     visitor_ip = Column(String(64), nullable=True)
     ref_code = Column(String(16), nullable=True, index=True)
+    link_slug = Column(String(32), nullable=True, index=True)     # 分发链接短码（多像素分发系统按链接隔离统计）
     created_at = Column(DateTime, default=datetime.now, index=True)
+
+
+# ======================
+# 像素凭证库（多广告商独立像素，数据隔离）
+# ======================
+class PixelCredential(Base):
+    __tablename__ = "pixel_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(80), nullable=False)                     # 备注名，如"A广告商"
+    pixel_id = Column(String(64), nullable=False)                 # Meta Pixel ID
+    capi_token = Column(Text, nullable=False)                     # Conversions API 访问令牌（服务端回传用）
+    event_name = Column(String(50), default="CompleteRegistration")  # 下载转化事件名（可配置）
+    test_event_code = Column(String(50), nullable=True)           # Meta 测试事件码（调试期用，可空）
+    enabled = Column(Integer, default=1, nullable=False)          # 1 启用 0 停用
+    created_at = Column(DateTime, default=datetime.now)
+
+
+# ======================
+# 分发链接（每条绑定一组像素凭证 + 自己的下载地址）
+# ======================
+class DistributionLink(Base):
+    __tablename__ = "distribution_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(32), unique=True, index=True, nullable=False)  # URL 短码，访客访问 /go/{slug}
+    name = Column(String(80), nullable=False)                     # 备注名，如"A广告商-TikTok渠道"
+    download_url = Column(Text, nullable=False)                   # 本链接的 APP 下载地址
+    credential_id = Column(Integer, ForeignKey("pixel_credentials.id"), nullable=False)  # 绑定的像素凭证
+    landing_type = Column(String(20), default="download", nullable=False)  # download=下载落地页, chat=AI主页
+    enabled = Column(Integer, default=1, nullable=False)          # 1 启用 0 停用
+    created_at = Column(DateTime, default=datetime.now)
+
+    credential = relationship("PixelCredential")
 
 
 # 配置默认值（seed 时仅补齐缺失的 key，不覆盖已有值）
@@ -156,6 +193,7 @@ def _ensure_user_columns():
     add_cols = {
         "referral_code": "VARCHAR(16)",
         "pixel_id": "VARCHAR(64) NULL",
+        "fb_download_count": "INTEGER NULL",
         "balance_usd": "FLOAT NOT NULL DEFAULT 0",
         "referral_count": "INTEGER NOT NULL DEFAULT 0",
         "membership_expire_at": "DATETIME NULL",
@@ -164,6 +202,25 @@ def _ensure_user_columns():
         for col, ddl in add_cols.items():
             if col not in existing:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
+
+
+def _ensure_link_slug_columns():
+    """给已存在的埋点表补 link_slug 列；给分发链接表补 landing_type 列（幂等）。"""
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    for tbl in ("page_visits", "download_clicks"):
+        if tbl not in tables:
+            continue
+        existing = {col["name"] for col in inspector.get_columns(tbl)}
+        if "link_slug" not in existing:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN link_slug VARCHAR(32) NULL"))
+    if "distribution_links" in tables:
+        existing = {col["name"] for col in inspector.get_columns("distribution_links")}
+        if "landing_type" not in existing:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE distribution_links ADD COLUMN landing_type VARCHAR(20) NOT NULL DEFAULT 'download'"))
 
 
 def seed_promo_config():
@@ -183,6 +240,7 @@ def seed_promo_config():
 Base.metadata.create_all(bind=engine)
 # 给旧库补列 + 补齐配置默认值
 _ensure_user_columns()
+_ensure_link_slug_columns()
 seed_promo_config()
 
 # DB 依赖  给你的接口【自动提供数据库连接】，用完【自动关闭】

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from sqlOrm import (
     User, ReferralEvent, PromoConfig, PROMO_CONFIG_DEFAULTS,
-    PageVisit, DownloadClick, WithdrawRequest,
+    PageVisit, DownloadClick, WithdrawRequest, DistributionLink,
 )
 
 # 永久会员用一个远期日期表示（仅记录，应用当前无会员门槛）
@@ -93,8 +93,8 @@ def build_referral_link(db: Session, code: str) -> str:
     return f"{base}{sep}ref={code}"
 
 
-# 后台「生成推广链接」使用的固定落地域名（带 Meta Pixel 追踪）
-ADMIN_LANDING_BASE_URL = "https://dddd.infinityfree.io/"
+# 后台「生成推广链接」使用的固定落地域名（推广员分享赚佣金，?ref= 溯源发奖）
+ADMIN_LANDING_BASE_URL = "https://gtp88.top/"
 
 
 def download_counts_by_ref(db: Session, ref_codes: list) -> dict:
@@ -117,6 +117,40 @@ def download_counts_by_ref(db: Session, ref_codes: list) -> dict:
     return {code: cnt for code, cnt in rows}
 
 
+def visit_counts_by_ref(db: Session, ref_codes: list) -> dict:
+    """批量统计一组推广码各自的落地页访问量（PV，可重复）。
+    返回 {ref_code: pv}。一次分组查询，忽略空推广码。"""
+    from sqlalchemy import func
+
+    codes = [c for c in (ref_codes or []) if c]
+    if not codes:
+        return {}
+    rows = (
+        db.query(PageVisit.ref_code, func.count(PageVisit.id))
+        .filter(PageVisit.ref_code.in_(codes))
+        .group_by(PageVisit.ref_code)
+        .all()
+    )
+    return {code: cnt for code, cnt in rows}
+
+
+def download_uv_by_ref(db: Session, ref_codes: list) -> dict:
+    """批量统计一组推广码各自的去重下载访客数（按 visitor_key distinct）。
+    返回 {ref_code: uv}。这是"下载量"口径（同一访客多次点只算一次）。"""
+    from sqlalchemy import func
+
+    codes = [c for c in (ref_codes or []) if c]
+    if not codes:
+        return {}
+    rows = (
+        db.query(DownloadClick.ref_code, func.count(func.distinct(DownloadClick.visitor_key)))
+        .filter(DownloadClick.ref_code.in_(codes))
+        .group_by(DownloadClick.ref_code)
+        .all()
+    )
+    return {code: cnt for code, cnt in rows}
+
+
 def build_admin_referral_link(code: str, pixel_id: str = "") -> str:
     """后台为单个用户生成的推广链接：固定域名 + ?ref=码[&pixel=PixelID]。"""
     params = [f"ref={quote(code or '', safe='')}"]
@@ -124,6 +158,47 @@ def build_admin_referral_link(code: str, pixel_id: str = "") -> str:
         params.append(f"pid={quote(pixel_id.strip(), safe='')}")
     sep = "&" if "?" in ADMIN_LANDING_BASE_URL else "?"
     return f"{ADMIN_LANDING_BASE_URL}{sep}{'&'.join(params)}"
+
+
+# ---------------- 分发链接：slug / 按链接统计 ----------------
+def generate_slug(db: Session) -> str:
+    """生成不与现有冲突的分发链接短码（8 位）。"""
+    for _ in range(20):
+        slug = secrets.token_urlsafe(6)[:8]
+        if not db.query(DistributionLink.id).filter(DistributionLink.slug == slug).first():
+            return slug
+    return secrets.token_urlsafe(10)[:12]
+
+
+def link_stats_by_slug(db: Session, slugs: list) -> dict:
+    """批量统计一组分发链接的访问量/点击量/去重下载量。
+    返回 {slug: {"visit": pv, "click": clicks, "download": uv}}。"""
+    from sqlalchemy import func
+
+    slugs = [s for s in (slugs or []) if s]
+    result = {s: {"visit": 0, "click": 0, "download": 0} for s in slugs}
+    if not slugs:
+        return result
+
+    for slug, cnt in (db.query(PageVisit.link_slug, func.count(PageVisit.id))
+                      .filter(PageVisit.link_slug.in_(slugs))
+                      .group_by(PageVisit.link_slug).all()):
+        if slug in result:
+            result[slug]["visit"] = cnt
+
+    for slug, cnt in (db.query(DownloadClick.link_slug, func.count(DownloadClick.id))
+                      .filter(DownloadClick.link_slug.in_(slugs))
+                      .group_by(DownloadClick.link_slug).all()):
+        if slug in result:
+            result[slug]["click"] = cnt
+
+    for slug, cnt in (db.query(DownloadClick.link_slug, func.count(func.distinct(DownloadClick.visitor_key)))
+                      .filter(DownloadClick.link_slug.in_(slugs))
+                      .group_by(DownloadClick.link_slug).all()):
+        if slug in result:
+            result[slug]["download"] = cnt
+
+    return result
 
 
 # ---------------- 发奖 ----------------
@@ -214,7 +289,8 @@ def track_download(db: Session, ref_code: str, fingerprint: str, ip: str,
 
 
 # ---------------- 埋点：访问 / 下载点击 ----------------
-def record_page_visit(db: Session, ip: str, user_agent: str, ref_code: str = "", path: str = "/chat") -> None:
+def record_page_visit(db: Session, ip: str, user_agent: str, ref_code: str = "",
+                       path: str = "/chat", link_slug: str = "") -> None:
     """记录一次落地页访问（PV）。visitor_key 用 UA+IP 粗略去重算 UV。
     埋点失败不应影响主流程，调用方需自行 try/except。"""
     visitor_key = make_visitor_key(user_agent, ip)  # 落地时前端指纹还没生成，用 UA 兜底
@@ -222,18 +298,21 @@ def record_page_visit(db: Session, ip: str, user_agent: str, ref_code: str = "",
         visitor_key=visitor_key,
         visitor_ip=ip,
         ref_code=(ref_code or "").strip() or None,
+        link_slug=(link_slug or "").strip() or None,
         path=path,
     ))
     db.commit()
 
 
-def record_download_click(db: Session, ip: str, fingerprint: str, ref_code: str = "") -> None:
+def record_download_click(db: Session, ip: str, fingerprint: str, ref_code: str = "",
+                          link_slug: str = "") -> None:
     """记录一次下载按钮点击（总点击量，可重复，不去重）。"""
     visitor_key = make_visitor_key(fingerprint, ip)
     db.add(DownloadClick(
         visitor_key=visitor_key,
         visitor_ip=ip,
         ref_code=(ref_code or "").strip() or None,
+        link_slug=(link_slug or "").strip() or None,
     ))
     db.commit()
 
@@ -271,6 +350,17 @@ def get_admin_stats(db: Session) -> dict:
     pending_amount = db.query(func.coalesce(func.sum(WithdrawRequest.amount), 0.0)).filter(
         WithdrawRequest.status == "pending").scalar() or 0.0
 
+    # 落地页维度（path == "landing" 的访问；下载点击总量 + 去重下载访客）
+    landing_pv = db.query(func.count(PageVisit.id)).filter(PageVisit.path == "landing").scalar() or 0
+    landing_pv_today = db.query(func.count(PageVisit.id)).filter(
+        PageVisit.path == "landing", PageVisit.created_at >= today).scalar() or 0
+    landing_uv = db.query(func.count(func.distinct(PageVisit.visitor_key))).filter(
+        PageVisit.path == "landing").scalar() or 0
+    landing_click_total = db.query(func.count(DownloadClick.id)).scalar() or 0
+    landing_click_today = db.query(func.count(DownloadClick.id)).filter(
+        DownloadClick.created_at >= today).scalar() or 0
+    landing_download_uv = db.query(func.count(func.distinct(DownloadClick.visitor_key))).scalar() or 0
+
     return {
         "total_users": total_users,
         "today_users": today_users,
@@ -284,6 +374,12 @@ def get_admin_stats(db: Session) -> dict:
         "rewarded_total": round(float(total_rewarded), 2),
         "withdraw_pending_count": pending_count,
         "withdraw_pending_amount": round(float(pending_amount), 2),
+        "landing_pv": landing_pv,
+        "landing_pv_today": landing_pv_today,
+        "landing_uv": landing_uv,
+        "landing_click_total": landing_click_total,
+        "landing_click_today": landing_click_today,
+        "landing_download_uv": landing_download_uv,
         "trend": get_trend(db, days=7),
     }
 

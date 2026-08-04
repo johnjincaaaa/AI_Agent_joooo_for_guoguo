@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>有料ai · 后台管理</title>
+    <title>Rove AI · 后台管理</title>
     <link rel="stylesheet" href="../static/css/admin.css?v={{ ASSET_VERSION }}">
     <link rel="icon" href="../static/a.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +12,7 @@
 <!-- 登录框 -->
 <div class="admin-login" id="adminLogin">
     <div class="admin-login-card">
-        <div class="admin-login-title">有料ai · 后台管理</div>
+        <div class="admin-login-title">Rove AI · 后台管理</div>
         <div class="admin-login-sub">请输入管理员账号密码</div>
         <input type="text" id="adminUser" placeholder="管理员账号" autocomplete="username">
         <input type="password" id="adminPass" placeholder="密码" autocomplete="current-password">
@@ -24,11 +24,13 @@
 <!-- 主体 -->
 <div class="admin-shell" id="adminShell" hidden>
     <header class="admin-header">
-        <div class="admin-brand">有料ai 后台</div>
+        <div class="admin-brand">Rove AI 后台</div>
         <nav class="admin-tabs">
             <button class="admin-tab active" data-tab="dashboard">数据看板</button>
             <button class="admin-tab" data-tab="withdraws">提现审批</button>
             <button class="admin-tab" data-tab="users">用户管理</button>
+            <button class="admin-tab" data-tab="pixels">像素凭证</button>
+            <button class="admin-tab" data-tab="links">分发链接</button>
             <button class="admin-tab" data-tab="config">配置管理</button>
         </nav>
         <button class="admin-logout" id="adminLogoutBtn">退出</button>
@@ -77,9 +79,39 @@
             </div>
             <table class="admin-table">
                 <thead>
-                <tr><th>ID</th><th>用户名</th><th>余额($)</th><th>推广数</th><th>下载数</th><th>推广码</th><th>Pixel ID</th><th>推广链接</th><th>会员到期</th><th>注册时间</th><th>操作</th></tr>
+                <tr><th>ID</th><th>用户名</th><th>余额($)</th><th>推广数</th><th>访问量</th><th>点击量</th><th>下载量</th><th>FB下载数</th><th>推广码</th><th>Pixel ID</th><th>推广链接</th><th>会员到期</th><th>注册时间</th><th>操作</th></tr>
                 </thead>
                 <tbody id="userTbody"></tbody>
+            </table>
+        </section>
+
+        <!-- 像素凭证 -->
+        <section class="admin-panel" id="panel-pixels">
+            <div class="panel-toolbar">
+                <button class="btn-refresh" id="pixelNewBtn">+ 新增像素凭证</button>
+                <button class="btn-refresh" id="pixelRefresh">刷新</button>
+            </div>
+            <div class="config-hint">每组像素凭证 = 一个广告商的 Pixel ID + CAPI Token。分发链接绑定它，实现各广告商数据隔离回传。</div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>ID</th><th>备注名</th><th>Pixel ID</th><th>CAPI Token</th><th>转化事件</th><th>测试码</th><th>状态</th><th>操作</th></tr>
+                </thead>
+                <tbody id="pixelTbody"></tbody>
+            </table>
+        </section>
+
+        <!-- 分发链接 -->
+        <section class="admin-panel" id="panel-links">
+            <div class="panel-toolbar">
+                <button class="btn-refresh" id="linkNewBtn">+ 新增分发链接</button>
+                <button class="btn-refresh" id="linkRefresh">刷新</button>
+            </div>
+            <div class="config-hint">每条链接绑定一组像素凭证。访客打开 /go/短码，用对应像素回传访问事件，随后进入 AI 主页。各广告商数据隔离。</div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>ID</th><th>备注名</th><th>分发链接</th><th>绑定像素</th><th>访问量</th><th>点击量</th><th>下载量</th><th>状态</th><th>操作</th></tr>
+                </thead>
+                <tbody id="linkTbody"></tbody>
             </table>
         </section>
 
