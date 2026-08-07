@@ -384,6 +384,91 @@ def get_admin_stats(db: Session) -> dict:
     }
 
 
+def daily_stats_by_ref(db: Session, ref_code: str, days: int = 7) -> list:
+    """单个推广方近 N 天每日 PV / 点击 / 去重下载，用于后台查看各推广人数据明细。"""
+    from sqlalchemy import func
+
+    if not ref_code:
+        return []
+
+    today = _today_start()
+    start = today - timedelta(days=days - 1)
+
+    # 一次 GROUP BY 查询每条埋点表的每日统计，避免逐天循环查
+    pv_rows = dict(
+        db.query(func.date(PageVisit.created_at), func.count(PageVisit.id))
+        .filter(PageVisit.ref_code == ref_code, PageVisit.created_at >= start)
+        .group_by(func.date(PageVisit.created_at))
+        .all()
+    )
+    click_rows = dict(
+        db.query(func.date(DownloadClick.created_at), func.count(DownloadClick.id))
+        .filter(DownloadClick.ref_code == ref_code, DownloadClick.created_at >= start)
+        .group_by(func.date(DownloadClick.created_at))
+        .all()
+    )
+    dl_rows = dict(
+        db.query(func.date(DownloadClick.created_at), func.count(func.distinct(DownloadClick.visitor_key)))
+        .filter(DownloadClick.ref_code == ref_code, DownloadClick.created_at >= start)
+        .group_by(func.date(DownloadClick.created_at))
+        .all()
+    )
+
+    result = []
+    for i in range(days):
+        day = start + timedelta(days=i)
+        key = day.strftime("%Y-%m-%d")
+        result.append({
+            "date": day.strftime("%m-%d"),
+            "pv": pv_rows.get(key, 0),
+            "click": click_rows.get(key, 0),
+            "download": dl_rows.get(key, 0),
+        })
+    return result
+
+
+def daily_stats_by_slug(db: Session, slug: str, days: int = 7) -> list:
+    """单个分发链接近 N 天每日 PV / 点击 / 去重下载，用于后台按链接看每日数据。"""
+    from sqlalchemy import func
+
+    if not slug:
+        return []
+
+    today = _today_start()
+    start = today - timedelta(days=days - 1)
+
+    pv_rows = dict(
+        db.query(func.date(PageVisit.created_at), func.count(PageVisit.id))
+        .filter(PageVisit.link_slug == slug, PageVisit.created_at >= start)
+        .group_by(func.date(PageVisit.created_at))
+        .all()
+    )
+    click_rows = dict(
+        db.query(func.date(DownloadClick.created_at), func.count(DownloadClick.id))
+        .filter(DownloadClick.link_slug == slug, DownloadClick.created_at >= start)
+        .group_by(func.date(DownloadClick.created_at))
+        .all()
+    )
+    dl_rows = dict(
+        db.query(func.date(DownloadClick.created_at), func.count(func.distinct(DownloadClick.visitor_key)))
+        .filter(DownloadClick.link_slug == slug, DownloadClick.created_at >= start)
+        .group_by(func.date(DownloadClick.created_at))
+        .all()
+    )
+
+    result = []
+    for i in range(days):
+        day = start + timedelta(days=i)
+        key = day.strftime("%Y-%m-%d")
+        result.append({
+            "date": day.strftime("%m-%d"),
+            "pv": pv_rows.get(key, 0),
+            "click": click_rows.get(key, 0),
+            "download": dl_rows.get(key, 0),
+        })
+    return result
+
+
 def get_trend(db: Session, days: int = 7) -> list:
     """近 N 天每日 PV/UV/下载/推广 趋势（含今天）。"""
     from sqlalchemy import func

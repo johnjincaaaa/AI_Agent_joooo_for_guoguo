@@ -21,9 +21,18 @@
     }
 
     // ---------------- 下载按钮：溯源埋点 ----------------
+    function getSlugFromUrl() {
+        // 分发链接 /go/{slug} 跳转过来时 URL 带 ?slug=xxx，读取用于 link_slug 埋点
+        try {
+            return (new URLSearchParams(window.location.search)).get("slug") || "";
+        } catch (e) { return ""; }
+    }
+
     function trackDownload() {
         const ref = typeof getReferral === "function" ? getReferral() : "";
-        if (!ref) return; // 无推广来源则不上报
+        const slug = getSlugFromUrl();
+        // 无推广来源且无分发链接 slug 则不上报（两个都没意义）
+        if (!ref && !slug) return;
         const fingerprint = typeof getFingerprint === "function" ? getFingerprint() : "";
         try {
             fetch(`${getConfig().API_BASE_URL || ""}/ai/promo/track-download`, {
@@ -31,7 +40,7 @@
                 headers: (typeof buildAuthHeaders === "function")
                     ? buildAuthHeaders()
                     : {"Content-Type": "application/json"},
-                body: JSON.stringify({ref, fingerprint}),
+                body: JSON.stringify({ref, fingerprint, slug}),
                 keepalive: true, // 即使随后页面跳转也尽量把请求发出去
             }).catch(() => {});
         } catch (e) {

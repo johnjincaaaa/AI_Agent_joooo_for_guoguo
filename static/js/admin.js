@@ -118,7 +118,7 @@
     // 纯 SVG 分组柱状图
     function renderTrend(trend) {
         const box = document.getElementById("trendChart");
-        if (!trend.length) { box.innerHTML = "<p class='empty-row'>暂无数据</p>"; return; }
+        if (!trend.length) { box.innerHTML = "<p class='empty-row'>暂无数据</p>"; renderDailyTable([]); return; }
         const series = [
             {key: "pv", color: "#4c8dff"},
             {key: "uv", color: "#2fae6a"},
@@ -147,6 +147,83 @@
         // 基线
         bars += `<line x1="${padL}" y1="${padT + chartH}" x2="${W}" y2="${padT + chartH}" stroke="rgba(255,255,255,0.12)"/>`;
         box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${bars}</svg>`;
+
+        // 每日明细表
+        renderDailyTable(trend);
+    }
+
+    function renderDailyTable(trend) {
+        const tb = document.getElementById("dailyTbody");
+        if (!trend.length) {
+            tb.innerHTML = `<tr><td colspan="5" class="empty-row">暂无数据</td></tr>`;
+            return;
+        }
+        tb.innerHTML = trend.map(d => `<tr>
+            <td>${esc(d.date)}</td>
+            <td>${d.pv}</td>
+            <td>${d.uv}</td>
+            <td>${d.download}</td>
+            <td>${d.referral}</td>
+        </tr>`).join("");
+    }
+
+    // ---------------- 每日明细弹窗（推广人 & 分发链接共用） ----------------
+    let _dailyMode = "";   // "user" | "link"
+    let _dailyId = "";     // uid 或 lid
+
+    async function showDailyModal(uid, username) {
+        _dailyMode = "user"; _dailyId = uid;
+        document.getElementById("dailyModalTitle").textContent = `每日数据明细 · ${username}`;
+        document.getElementById("dailyDays").value = "7";
+        document.getElementById("dailyModal").hidden = false;
+        await loadDailyData();
+    }
+
+    async function showLinkDailyModal(lid, name) {
+        _dailyMode = "link"; _dailyId = lid;
+        document.getElementById("dailyModalTitle").textContent = `每日数据明细 · ${name}`;
+        document.getElementById("dailyDays").value = "7";
+        document.getElementById("dailyModal").hidden = false;
+        await loadDailyData();
+    }
+
+    function closeDailyModal() {
+        document.getElementById("dailyModal").hidden = true;
+        _dailyMode = ""; _dailyId = "";
+    }
+
+    async function reloadDaily() {
+        if (_dailyMode && _dailyId) await loadDailyData();
+    }
+
+    async function loadDailyData() {
+        const days = document.getElementById("dailyDays").value;
+        let url;
+        if (_dailyMode === "user") {
+            url = `/admin/api/users/${_dailyId}/daily-stats?days=${days}`;
+        } else if (_dailyMode === "link") {
+            url = `/admin/api/links/${_dailyId}/daily-stats?days=${days}`;
+        } else return;
+
+        const tb = document.getElementById("dailyDetailTbody");
+        tb.innerHTML = `<tr><td colspan="4" class="empty-row">加载中…</td></tr>`;
+        try {
+            const res = await api(url);
+            const d = await res.json();
+            const rows = d.daily || [];
+            if (!rows.length) {
+                tb.innerHTML = `<tr><td colspan="4" class="empty-row">暂无数据</td></tr>`;
+                return;
+            }
+            tb.innerHTML = rows.map(r => `<tr>
+                <td>${esc(r.date)}</td>
+                <td>${r.pv}</td>
+                <td>${r.click}</td>
+                <td>${r.download}</td>
+            </tr>`).join("");
+        } catch (e) {
+            tb.innerHTML = `<tr><td colspan="4" class="empty-row">加载失败</td></tr>`;
+        }
     }
 
     // ---------------- 提现审批 ----------------
@@ -228,6 +305,7 @@
                     <button class="act-btn act-pixel" data-pixel="${u.id}" data-name="${esc(u.username)}" data-pixelval="${esc(u.pixel_id || "")}">设置Pixel</button>
                     <button class="act-btn act-fb" data-fb="${u.id}" data-name="${esc(u.username)}" data-fbval="${fbVal}">填FB数</button>
                     ${copyBtn}
+                    <button class="act-btn act-edit" data-daily="${u.id}" data-dname="${esc(u.username)}">每日数据</button>
                 </td>
             </tr>`;
             }).join("");
@@ -403,6 +481,7 @@
                     <button class="act-btn act-copy" data-copy="${esc(l.url)}">复制</button>
                     <button class="act-btn act-edit" data-ledit="${l.id}">编辑</button>
                     <button class="act-btn act-reject" data-ldel="${l.id}">删除</button>
+                    <button class="act-btn act-edit" data-ldaily="${l.id}" data-ldname="${esc(l.name)}">每日数据</button>
                 </td>
             </tr>`).join("");
         } catch (e) { /* 401 */ }
@@ -525,7 +604,9 @@
             const fbId = e.target.getAttribute("data-fb");
             if (fbId) { setFbDownload(fbId, e.target.getAttribute("data-name"), e.target.getAttribute("data-fbval")); return; }
             const copyVal = e.target.getAttribute("data-copy");
-            if (copyVal) { copyLink(copyVal); }
+            if (copyVal) { copyLink(copyVal); return; }
+            const dailyId = e.target.getAttribute("data-daily");
+            if (dailyId) { showDailyModal(dailyId, e.target.getAttribute("data-dname")); }
         });
 
         // 像素凭证
@@ -547,8 +628,15 @@
             const ed = e.target.getAttribute("data-ledit");
             if (ed) { linkForm(currentLinks.find(l => String(l.id) === ed)); return; }
             const dl = e.target.getAttribute("data-ldel");
-            if (dl) { deleteLink(dl); }
+            if (dl) { deleteLink(dl); return; }
+            const ld = e.target.getAttribute("data-ldaily");
+            if (ld) { showLinkDailyModal(ld, e.target.getAttribute("data-ldname")); }
         });
+
+        // 每日数据弹窗
+        document.getElementById("dailyModalClose").addEventListener("click", closeDailyModal);
+        document.getElementById("dailyModalMask").addEventListener("click", closeDailyModal);
+        document.getElementById("dailyDays").addEventListener("change", reloadDaily);
 
         // 有 token 直接进后台，否则登录
         if (token()) showShell(); else showLogin();

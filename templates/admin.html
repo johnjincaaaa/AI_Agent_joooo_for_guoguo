@@ -50,6 +50,15 @@
                     <span><i class="dot dot-rf"></i>有效推广</span>
                 </div>
             </div>
+            <div class="daily-box">
+                <div class="daily-title">每日数据明细</div>
+                <table class="admin-table daily-table">
+                    <thead>
+                        <tr><th>日期</th><th>PV 访问</th><th>UV 人头</th><th>下载点击</th><th>有效推广</th></tr>
+                    </thead>
+                    <tbody id="dailyTbody"></tbody>
+                </table>
+            </div>
         </section>
 
         <!-- 提现审批 -->
@@ -123,6 +132,24 @@
             <div class="config-status" id="configStatus"></div>
         </section>
     </main>
+</div>
+
+<!-- 每日数据弹窗 -->
+<div class="daily-modal" id="dailyModal" hidden>
+    <div class="daily-modal-mask" id="dailyModalMask"></div>
+    <div class="daily-modal-body">
+        <div class="daily-modal-header">
+            <span class="daily-modal-title" id="dailyModalTitle">每日数据明细</span>
+            <button class="daily-modal-close" id="dailyModalClose">&times;</button>
+        </div>
+        <div class="daily-modal-toolbar">
+            <label>天数：<select id="dailyDays"><option value="7">近7天</option><option value="14">近14天</option><option value="30">近30天</option></select></label>
+        </div>
+        <table class="admin-table daily-table">
+            <thead><tr><th>日期</th><th>PV 访问</th><th>点击量</th><th>下载量(去重)</th></tr></thead>
+            <tbody id="dailyDetailTbody"></tbody>
+        </table>
+    </div>
 </div>
 
 <script src="../static/js/admin.js?v={{ ASSET_VERSION }}"></script>

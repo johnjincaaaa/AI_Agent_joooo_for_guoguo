@@ -683,8 +683,8 @@ def distribution_landing(slug: str, request: Request, db: Session = Depends(get_
     except Exception as e:
         logger.warning(f"[CAPI] 分发页 PageView 回传失败 slug={slug}：{e}")
 
-    # 统一跳转 AI 主页（带 slug 标记来源，_v=1 表示已埋点/回传，避免重复）
-    return RedirectResponse(url=f"/chat?slug={slug}&_v=1", status_code=302)
+    # 跳转外部落地页，带 slug 供落地页 JS 识别来源链
+    return RedirectResponse(url=f"https://88811app.net/?slug={slug}", status_code=302)
 
 
 @app.post("/ai/promo/track-download", summary="记录下载控件点击并给推广人发奖（公开）")
@@ -953,6 +953,24 @@ def admin_set_fb_download(
     return {"code": 200, "msg": "已保存", "fb_download_count": user.fb_download_count}
 
 
+@app.get("/admin/api/users/{uid}/daily-stats", summary="单个推广方每日数据明细")
+def admin_user_daily_stats(
+        uid: int,
+        days: int = Query(7, ge=1, le=30, description="最近多少天"),
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "用户不存在"})
+    return {
+        "code": 200,
+        "username": user.username,
+        "referral_code": user.referral_code or "",
+        "daily": promo.daily_stats_by_ref(db, user.referral_code or "", days=days),
+    }
+
+
 @app.get("/admin/api/withdraws", summary="提现申请列表")
 def admin_withdraws(
         status_filter: str = Query("", alias="status", description="pending/paid/rejected，空=全部"),
@@ -1189,6 +1207,24 @@ def admin_delete_link(lid: int, db: Session = Depends(get_db),
     db.delete(link)
     db.commit()
     return {"code": 200, "msg": "已删除"}
+
+
+@app.get("/admin/api/links/{lid}/daily-stats", summary="单个分发链接近 N 天每日数据明细")
+def admin_link_daily_stats(
+        lid: int,
+        days: int = Query(7, ge=1, le=30),
+        db: Session = Depends(get_db),
+        _: bool = Depends(verify_admin_token),
+):
+    link = db.query(DistributionLink).filter(DistributionLink.id == lid).first()
+    if not link:
+        raise HTTPException(status_code=404, detail={"code": 404, "msg": "链接不存在"})
+    return {
+        "code": 200,
+        "name": link.name,
+        "slug": link.slug,
+        "daily": promo.daily_stats_by_slug(db, link.slug, days=days),
+    }
 
 
 # ------------------- 接口：登录 ------------------
